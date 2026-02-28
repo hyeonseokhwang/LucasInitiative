@@ -51,6 +51,13 @@ async def generate_daily_report() -> str:
         "data": {"title": f"Daily Report {datetime.now().strftime('%Y-%m-%d')}", "preview": report[:500]},
     })
 
+    # Send to Telegram
+    try:
+        from services.telegram_service import send_daily_summary
+        await send_daily_summary(report)
+    except Exception:
+        pass
+
     return report
 
 

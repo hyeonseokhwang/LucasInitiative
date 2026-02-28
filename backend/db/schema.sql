@@ -156,6 +156,71 @@ CREATE TABLE IF NOT EXISTS collected_items (
     created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Research topics (investigation subjects)
+CREATE TABLE IF NOT EXISTS research_topics (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    query       TEXT NOT NULL,
+    priority    INTEGER DEFAULT 5,              -- 1=urgent alert, 5=trending, 7=routine
+    status      TEXT DEFAULT 'pending'
+                CHECK(status IN ('pending', 'researching', 'validating', 'completed', 'failed')),
+    trigger_type TEXT DEFAULT 'auto',           -- auto, alert, manual
+    source_data TEXT,                           -- JSON: triggering context
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    completed_at TEXT
+);
+
+-- Research evidence (individual claims from sources)
+CREATE TABLE IF NOT EXISTS research_evidence (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_id    INTEGER NOT NULL REFERENCES research_topics(id) ON DELETE CASCADE,
+    claim       TEXT NOT NULL,
+    source      TEXT NOT NULL,                  -- source name/url
+    source_type TEXT DEFAULT 'web',             -- web, db_market, db_news, db_alert
+    confidence  REAL DEFAULT 0.5,               -- 0.0 ~ 1.0
+    agrees_with TEXT,                           -- JSON array of evidence IDs
+    contradicts TEXT,                           -- JSON array of evidence IDs
+    verified    INTEGER DEFAULT 0,              -- 0=unverified, 1=cross-verified
+    raw_data    TEXT,                           -- original snippet
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Research reports (final analysis output)
+CREATE TABLE IF NOT EXISTS research_reports (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic_id        INTEGER NOT NULL REFERENCES research_topics(id) ON DELETE CASCADE,
+    title           TEXT NOT NULL,
+    summary         TEXT NOT NULL,
+    full_analysis   TEXT NOT NULL,
+    confidence_avg  REAL DEFAULT 0.5,
+    agreement_rate  REAL DEFAULT 0.0,           -- % of evidence that agrees
+    contradictions  INTEGER DEFAULT 0,          -- count of contradicting pairs
+    evidence_count  INTEGER DEFAULT 0,
+    model_used      TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Source reliability tracking
+CREATE TABLE IF NOT EXISTS source_reliability (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name     TEXT NOT NULL UNIQUE,
+    verified_claims INTEGER DEFAULT 0,
+    total_claims    INTEGER DEFAULT 0,
+    reliability     REAL DEFAULT 0.5,           -- verified/total ratio
+    last_updated    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Telegram subscribers
+CREATE TABLE IF NOT EXISTS telegram_config (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id         TEXT NOT NULL UNIQUE,
+    username        TEXT,
+    alerts_enabled  INTEGER DEFAULT 1,
+    research_enabled INTEGER DEFAULT 1,
+    daily_enabled   INTEGER DEFAULT 1,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_collected_hash ON collected_items(content_hash);
 CREATE INDEX IF NOT EXISTS idx_collected_cat ON collected_items(category, created_at);
@@ -165,3 +230,6 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_metrics_time ON metrics(recorded_at);
 CREATE INDEX IF NOT EXISTS idx_schedules_start ON schedules(start_at);
 CREATE INDEX IF NOT EXISTS idx_expenses_paid ON expenses(paid_at);
+CREATE INDEX IF NOT EXISTS idx_research_topics_status ON research_topics(status, priority);
+CREATE INDEX IF NOT EXISTS idx_research_evidence_topic ON research_evidence(topic_id);
+CREATE INDEX IF NOT EXISTS idx_research_reports_topic ON research_reports(topic_id);

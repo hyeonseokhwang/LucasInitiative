@@ -41,4 +41,18 @@ export const api = {
 
   // Usage
   usage: () => fetchJson<any>('/api/usage'),
+
+  // Research
+  researchTopics: (status?: string) =>
+    fetchJson<{ topics: any[] }>(`/api/research/topics${status ? `?status=${status}` : ''}`),
+  researchReports: (limit?: number) =>
+    fetchJson<{ reports: any[] }>(`/api/research/reports?limit=${limit || 20}`),
+  researchReport: (id: number) =>
+    fetchJson<any>(`/api/research/reports/${id}`),
+  researchEvidence: (topicId: number) =>
+    fetchJson<{ evidence: any[] }>(`/api/research/evidence/${topicId}`),
+  researchTrigger: (query: string) =>
+    fetchJson<any>(`/api/research/trigger?${new URLSearchParams({ query })}`, { method: 'POST' }),
+  researchStatus: () =>
+    fetchJson<{ engine: any }>('/api/research/status'),
 }

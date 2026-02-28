@@ -23,6 +23,14 @@ METRICS_RETENTION_DAYS = 7      # auto-cleanup
 MAX_CONTEXT_MESSAGES = 20
 CHAT_TIMEOUT = 300              # seconds
 
+# Research Engine
+RESEARCH_CYCLE_INTERVAL = 7200  # seconds (2 hours)
+RESEARCH_ALERT_THRESHOLD = 3.0  # ±% to trigger instant research
+
+# API Budget (Claude)
+API_MONTHLY_BUDGET_KRW = 200000  # 월 20만원 한도
+API_HAIKU_PRIORITY = True        # 분류/필터는 Haiku(저렴), 심층 분석만 Sonnet
+
 # Model display config
 MODEL_CONFIGS = {
     "deepseek-r1:8b": {"label": "DeepSeek R1 8B", "category": "reasoning", "recommended": True},

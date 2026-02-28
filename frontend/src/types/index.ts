@@ -107,6 +107,49 @@ export interface ExpenseSummary {
   breakdown: { category: string; is_income: boolean; total: number; count: number }[]
 }
 
+export interface ResearchReport {
+  id: number
+  topic_id: number
+  title: string
+  summary: string
+  full_analysis: string
+  confidence_avg: number
+  agreement_rate: number
+  contradictions: number
+  evidence_count: number
+  model_used?: string
+  query?: string
+  trigger_type?: string
+  priority?: number
+  created_at: string
+}
+
+export interface ResearchEvidence {
+  id: number
+  topic_id: number
+  claim: string
+  source: string
+  source_type: string
+  confidence: number
+  agrees_with?: string
+  contradicts?: string
+  verified: boolean
+  raw_data?: string
+  created_at: string
+}
+
+export interface ResearchTopic {
+  id: number
+  title: string
+  query: string
+  priority: number
+  status: string
+  trigger_type: string
+  source_data?: string
+  created_at: string
+  completed_at?: string
+}
+
 export type WsMessage =
   | { type: 'metrics'; data: SystemSnapshot }
   | { type: 'chat_token'; data: { conversation_id: number; token: string; done: boolean } }
@@ -116,4 +159,6 @@ export type WsMessage =
   | { type: 'collector_alert'; data: { category: string; message: string; count: number } }
   | { type: 'collector_update'; data: { category: string; new_items: number } }
   | { type: 'daily_report'; data: { title: string; preview: string } }
+  | { type: 'research_update'; data: { topic_id: number; title: string; stage: string; status: string } }
+  | { type: 'research_complete'; data: { topic_id: number; report_id: number; title: string; summary: string; confidence: number; evidence_count: number } }
   | { type: 'pong' }

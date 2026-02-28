@@ -8,6 +8,8 @@ export function useWebSocket() {
   const [chatComplete, setChatComplete] = useState<any>(null)
   const [taskUpdate, setTaskUpdate] = useState<any>(null)
   const [agentUpdate, setAgentUpdate] = useState<any>(null)
+  const [researchUpdate, setResearchUpdate] = useState<any>(null)
+  const [researchComplete, setResearchComplete] = useState<any>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const retryRef = useRef(0)
 
@@ -39,6 +41,12 @@ export function useWebSocket() {
           case 'agent_update':
             setAgentUpdate(msg.data)
             break
+          case 'research_update':
+            setResearchUpdate(msg.data)
+            break
+          case 'research_complete':
+            setResearchComplete(msg.data)
+            break
         }
       } catch {}
     }
@@ -59,5 +67,5 @@ export function useWebSocket() {
     return () => wsRef.current?.close()
   }, [connect])
 
-  return { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate }
+  return { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, researchUpdate, researchComplete }
 }

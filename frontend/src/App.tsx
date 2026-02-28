@@ -8,12 +8,13 @@ import { ChatPanel } from './components/ChatPanel'
 import { SchedulePanel } from './components/SchedulePanel'
 import { ExpensePanel } from './components/ExpensePanel'
 import { ReportsPanel } from './components/ReportsPanel'
+import { ResearchPanel } from './components/ResearchPanel'
 import { CompanyView } from './components/CompanyView'
 
-type View = 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'reports'
+type View = 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'reports' | 'research'
 
 function App() {
-  const { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate } = useWebSocket()
+  const { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, researchUpdate, researchComplete } = useWebSocket()
   const [view, setView] = useState<View>('company')
   const [usage, setUsage] = useState<any>(null)
 
@@ -57,7 +58,7 @@ function App() {
 
       {/* Navigation */}
       <nav className="bg-slate-800/40 border-b border-slate-700/30 px-4 flex gap-1">
-        {(['company', 'dashboard', 'chat', 'schedule', 'expense', 'reports'] as const).map(v => (
+        {(['company', 'dashboard', 'chat', 'schedule', 'expense', 'reports', 'research'] as const).map(v => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -67,7 +68,7 @@ function App() {
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            {{ company: 'Company', dashboard: 'Dashboard', chat: 'Chat', schedule: 'Schedule', expense: 'Expense', reports: 'Reports' }[v]}
+            {{ company: 'Company', dashboard: 'Dashboard', chat: 'Chat', schedule: 'Schedule', expense: 'Expense', reports: 'Reports', research: 'Research' }[v]}
           </button>
         ))}
       </nav>
@@ -107,6 +108,12 @@ function App() {
         {view === 'reports' && (
           <div className="h-[calc(100vh-120px)]">
             <ReportsPanel />
+          </div>
+        )}
+
+        {view === 'research' && (
+          <div className="h-[calc(100vh-120px)]">
+            <ResearchPanel researchUpdate={researchUpdate} researchComplete={researchComplete} />
           </div>
         )}
       </main>

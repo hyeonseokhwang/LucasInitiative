@@ -30,6 +30,7 @@ const AVATAR_MAP: Record<string, string> = {
   developer: '\u{1F468}\u{200D}\u{1F4BB}',
   designer: '\u{1F3A8}',
   government: '\u{1F3DB}',
+  researcher: '\u{1F50D}',
 }
 
 const STATUS_STYLES: Record<string, { dot: string; label: string; bg: string }> = {
@@ -46,6 +47,7 @@ const DEPT_COLORS: Record<string, string> = {
   dev_division: 'from-purple-500/20 to-purple-600/5',
   design_division: 'from-pink-500/20 to-pink-600/5',
   govt_division: 'from-cyan-500/20 to-cyan-600/5',
+  research_division: 'from-violet-500/20 to-violet-600/5',
 }
 
 export function CompanyView({ agentUpdate }: { agentUpdate: any }) {

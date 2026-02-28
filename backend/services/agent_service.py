@@ -48,6 +48,7 @@ class AgentManager:
             Agent("hq", "Claude", "HQ Director / PM", "headquarters", "director"),
             Agent("stock", "Alpha", "Stock Analyst", "stock_division", "trader"),
             Agent("realestate", "Terra", "Real Estate Analyst", "realestate_division", "building"),
+            Agent("research", "Scholar", "Research Analyst", "research_division", "researcher"),
             Agent("dev", "Code", "Lead Developer", "dev_division", "developer"),
             Agent("design", "Pixel", "UI/UX Designer", "design_division", "designer"),
             Agent("govt", "Policy", "Gov Project Manager", "govt_division", "government"),

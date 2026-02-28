@@ -89,6 +89,19 @@ async def collect_stock_prices():
                 "type": "collector_alert",
                 "data": {"category": "stock", "message": alert_text, "count": len(alerts)},
             })
+            # Trigger ONE combined research for all alerts (not per-alert)
+            try:
+                from services.research_service import queue_alert
+                summary = f"급등락 {len(alerts)}건 종합"
+                await queue_alert(f"Stock Alert: {summary}", alert_text, {"alerts": alerts})
+            except Exception as e:
+                print(f"[Collector] Research queue error: {e}")
+            # Telegram push
+            try:
+                from services.telegram_service import send_alert
+                await send_alert(alert_text)
+            except Exception:
+                pass
 
         return len(all_data)
 

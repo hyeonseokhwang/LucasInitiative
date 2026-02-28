@@ -29,6 +29,7 @@ Available tools/capabilities:
 10. REALESTATE_REPORT - Get Seoul apartment sale/jeonse/monthly rent market data
 11. DAILY_REPORT - Generate full daily report (stocks + real estate combined)
 12. STATUS - Report system status
+13. DEEP_RESEARCH - Trigger autonomous deep research on a topic (multi-source, cross-validated)
 
 When you receive a message, respond with a JSON action plan:
 {
@@ -36,7 +37,7 @@ When you receive a message, respond with a JSON action plan:
   "reasoning": "why you chose this action",
   "actions": [
     {
-      "tool": "ollama|search|fetch|schedule_add|schedule_list|expense_add|expense_summary|stock_report|realestate_report|daily_report|supervisor",
+      "tool": "ollama|search|fetch|schedule_add|schedule_list|expense_add|expense_summary|stock_report|realestate_report|daily_report|deep_research|supervisor",
       "model": "deepseek-r1:8b (only for ollama tool)",
       "query": "search query (for search tool)",
       "url": "target URL (for fetch tool)",
@@ -67,6 +68,7 @@ Rules:
 - For "주식 어때?", "시장 상황", "삼성전자 주가" → use stock_report
 - For "부동산 시세", "서울 아파트", "전세 시세" → use realestate_report
 - For "일일보고", "오늘 보고서", "daily report" → use daily_report (stocks + real estate combined)
+- For "심층 분석", "깊이 조사", "리서치 해줘", "deep research" → use deep_research (trigger autonomous multi-source research)
 - Today's date is dynamically provided: always use it for relative dates like "오늘", "내일", "다음주"
 - Always respond in the same language as the user
 - Be concise and actionable
@@ -265,6 +267,13 @@ async def execute_plan(plan: dict, ollama_chat_fn, broadcast_fn=None) -> str:
             await broadcast("[Generating daily report...]\n")
             report = await generate_daily_report()
             results.append(report)
+
+        elif tool == "deep_research":
+            query = action.get("query", action.get("prompt", ""))
+            await broadcast(f"[Deep Research queued: {query}...]\n")
+            from services.research_service import queue_manual
+            await queue_manual(query)
+            results.append(f"[Deep Research] Research queued: {query}\nThe research engine will analyze this topic with multi-source cross-validation. Results will appear in the Research tab.")
 
         elif tool == "supervisor":
             results.append(f"[Supervisor]: {action.get('prompt', '')}")
