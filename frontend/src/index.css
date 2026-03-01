@@ -33,6 +33,61 @@
   --border-default: rgba(51, 65, 85, 0.5);
 }
 
+/* Light theme overrides */
+.light {
+  --bg-primary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-hover: #e2e8f0;
+
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --chart-grid: #e2e8f0;
+  --chart-border: #cbd5e1;
+  --chart-text: #475569;
+
+  --border-default: rgba(203, 213, 225, 0.6);
+
+  color-scheme: light;
+}
+
+/* Light theme Tailwind overrides - remap slate bg/text for light mode */
+.light {
+  /* Override common dark backgrounds */
+  & .bg-slate-900\/60, & .bg-slate-900\/50, & .bg-slate-900\/40 { background-color: rgba(241, 245, 249, 0.8) !important; }
+  & .bg-slate-800\/60, & .bg-slate-800\/50, & .bg-slate-800\/40 { background-color: rgba(255, 255, 255, 0.9) !important; }
+  & .bg-slate-800\/90 { background-color: rgba(255, 255, 255, 0.95) !important; }
+  & .bg-slate-800 { background-color: #f8fafc !important; }
+  & .bg-slate-700\/30, & .bg-slate-700\/20, & .bg-slate-700\/15, & .bg-slate-700\/40, & .bg-slate-700\/50, & .bg-slate-700\/60 { background-color: rgba(226, 232, 240, 0.5) !important; }
+  & .bg-slate-700 { background-color: #e2e8f0 !important; }
+
+  /* Override text colors */
+  & .text-white { color: #1e293b !important; }
+  & .text-slate-300 { color: #475569 !important; }
+  & .text-slate-400 { color: #64748b !important; }
+  & .text-slate-500 { color: #94a3b8 !important; }
+  & .text-slate-600 { color: #cbd5e1 !important; }
+
+  /* Borders */
+  & .border-slate-700\/50, & .border-slate-700\/30, & .border-slate-700 { border-color: rgba(203, 213, 225, 0.5) !important; }
+  & .border-slate-600\/50, & .border-slate-600\/30, & .border-slate-600 { border-color: rgba(203, 213, 225, 0.6) !important; }
+
+  /* Divide */
+  & .divide-slate-700\/30 > :not(:first-child) { border-color: rgba(226, 232, 240, 0.5) !important; }
+
+  /* Inputs in light mode */
+  & input[type="text"], & input[type="number"], & input[type="date"], & select, & textarea {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+  }
+  & input::placeholder, & textarea::placeholder { color: #94a3b8 !important; }
+
+  /* Scrollbar in light mode */
+  scrollbar-color: #cbd5e1 transparent;
+}
+
 body {
   margin: 0;
   background-color: var(--bg-primary);
