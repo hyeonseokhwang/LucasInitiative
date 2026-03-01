@@ -143,9 +143,20 @@ export const api = {
   signalScan: () =>
     fetchJson<{ status: string; signals: any[]; count: number }>('/api/research/signals/scan', { method: 'POST' }),
 
-  // Daily Reports (from daily_reports table)
+  // Daily Reports (from daily_reports table + Worker-1 date-based API)
   dailyReports: (limit?: number) =>
     fetchJson<{ reports: any[] }>(`/api/reports/history?limit=${limit || 30}`),
+  dailyReportByDate: (date: string) =>
+    fetchJson<any>(`/api/research/reports/${encodeURIComponent(date)}`),
+
+  // Sentiment Analysis (Worker-1 Phase 2)
+  sentiment: (symbol?: string) =>
+    fetchJson<{ sentiments: any[]; summary?: any }>(`/api/research/sentiment${symbol ? `?symbol=${encodeURIComponent(symbol)}` : ''}`),
+  sentimentNews: (symbol?: string, limit?: number) =>
+    fetchJson<{ news: any[] }>(`/api/research/sentiment/news?${new URLSearchParams({
+      ...(symbol ? { symbol } : {}),
+      limit: String(limit || 20),
+    })}`),
 
   // Challenges (direct call to Scheduler at :7778)
   challenges: () =>

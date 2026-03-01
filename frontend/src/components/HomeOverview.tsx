@@ -56,6 +56,26 @@ function SectionCard({
   )
 }
 
+// Service definitions for health checks
+const SERVICES = [
+  { name: 'Command Center', port: 9000, url: 'http://localhost:9000/api/health', key: 'cc' },
+  { name: 'Dashboard', port: 7777, url: 'http://localhost:7777/api/health', key: 'dashboard' },
+  { name: 'Scheduler', port: 7778, url: 'http://localhost:7778/api/health', key: 'scheduler' },
+  { name: 'NPC Engine', port: 8889, url: 'http://localhost:8889/health', key: 'npc' },
+  { name: 'Village', port: 8888, url: 'http://localhost:8888/health', key: 'village' },
+  { name: 'Video Localizer', port: 8080, url: 'http://localhost:8080/health', key: 'video' },
+  { name: 'Mobile', port: 3004, url: 'http://localhost:3004/health', key: 'mobile' },
+]
+
+const QUICK_LINKS = [
+  { name: 'Command Center', desc: 'Worker orchestration', url: 'http://localhost:9000', icon: '🎯', color: 'blue' },
+  { name: 'Dashboard', desc: 'System monitoring', url: 'http://localhost:7777', icon: '📊', color: 'emerald' },
+  { name: 'Scheduler', desc: 'Voice assistant + calendar', url: 'http://localhost:7778', icon: '📅', color: 'amber' },
+  { name: 'NPC Village', desc: 'LLM simulation', url: 'http://localhost:8888', icon: '🏘️', color: 'cyan' },
+  { name: 'Video Localizer', desc: 'Translate & dub', url: 'http://localhost:8080', icon: '🎬', color: 'red' },
+  { name: 'Mobile Commander', desc: 'Mobile control', url: 'http://localhost:3004', icon: '📱', color: 'slate' },
+]
+
 export function HomeOverview({ metrics, onNavigate }: Props) {
   const { locale, t } = useLocale()
   const h = t.home
@@ -68,6 +88,9 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
   const [usage, setUsage] = useState<any>(null)
   const [challenges, setChallenges] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [serviceStatus, setServiceStatus] = useState<Record<string, boolean>>({})
+  const [todayReports, setTodayReports] = useState(0)
+  const [signalCount, setSignalCount] = useState(0)
 
   useEffect(() => {
     Promise.allSettled([
@@ -78,7 +101,22 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
       api.researchReports(3).then(r => setResearch(r.reports || [])),
       api.usage().then(r => setUsage(r)),
       api.challenges().then(r => setChallenges(Array.isArray(r) ? r : (r?.challenges || []))),
+      api.signals(50).then(r => setSignalCount(r.count || r.signals?.length || 0)),
     ]).finally(() => setLoading(false))
+
+    // Health checks for all services
+    const today = new Date().toISOString().slice(0, 10)
+    SERVICES.forEach(svc => {
+      fetch(svc.url, { signal: AbortSignal.timeout(3000) })
+        .then(r => { setServiceStatus(prev => ({ ...prev, [svc.key]: r.ok })) })
+        .catch(() => { setServiceStatus(prev => ({ ...prev, [svc.key]: false })) })
+    })
+
+    // Today's worker reports count from CC
+    fetch('http://localhost:9000/api/reports?today=true', { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(data => setTodayReports(data.count || data.reports?.length || 0))
+      .catch(() => {})
   }, [])
 
   const vramPercent = metrics && metrics.gpu.mem_total_mb > 0
@@ -118,6 +156,69 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             {[1,2,3,4].map(i => <div key={i} className="w-16 h-16 rounded-full bg-slate-700/50 animate-pulse" />)}
           </div>
         )}
+      </div>
+
+      {/* Service Status */}
+      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-300">{h.serviceStatus}</h3>
+          <span className="text-xs text-slate-500">
+            {Object.values(serviceStatus).filter(Boolean).length}/{SERVICES.length} {h.online}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          {SERVICES.map(svc => {
+            const isUp = serviceStatus[svc.key] === true
+            const isPending = serviceStatus[svc.key] === undefined
+            return (
+              <div key={svc.key} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/20 border border-slate-700/40">
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  isPending ? 'bg-slate-500 animate-pulse' :
+                  isUp ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]' :
+                  'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
+                }`} />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-white truncate">{svc.name}</div>
+                  <div className="text-[10px] text-slate-500">:{svc.port}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Today's Activity Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-lg">
+            📋
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-white">{todayReports}</div>
+            <div className="text-xs text-slate-400">{h.workerReports}</div>
+          </div>
+        </div>
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-lg">
+            ⚡
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-white">{signalCount}</div>
+            <div className="text-xs text-slate-400">{h.signalsDetected}</div>
+          </div>
+        </div>
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-lg">
+            ✅
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-white">
+              {Object.values(serviceStatus).filter(Boolean).length}
+              <span className="text-sm font-normal text-slate-500">/{SERVICES.length}</span>
+            </div>
+            <div className="text-xs text-slate-400">{h.online}</div>
+          </div>
+        </div>
       </div>
 
       {/* Challenge Widget */}
@@ -377,6 +478,37 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             <div className="text-xs text-slate-500">{loading ? t.loading : h.noUsageData}</div>
           )}
         </SectionCard>
+      </div>
+
+      {/* Quick Links Grid */}
+      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+        <h3 className="text-sm font-semibold text-slate-300 mb-4">{h.quickLinks}</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {QUICK_LINKS.map(link => {
+            const colorMap: Record<string, string> = {
+              blue: 'border-blue-500/30 hover:bg-blue-500/5',
+              emerald: 'border-emerald-500/30 hover:bg-emerald-500/5',
+              amber: 'border-amber-500/30 hover:bg-amber-500/5',
+              cyan: 'border-cyan-500/30 hover:bg-cyan-500/5',
+              red: 'border-red-500/30 hover:bg-red-500/5',
+              slate: 'border-slate-500/30 hover:bg-slate-500/5',
+            }
+            return (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border bg-slate-700/10
+                  transition-all hover:scale-[1.02] ${colorMap[link.color] || colorMap.slate}`}
+              >
+                <span className="text-2xl">{link.icon}</span>
+                <span className="text-xs font-medium text-white text-center">{link.name}</span>
+                <span className="text-[10px] text-slate-500 text-center">{link.desc}</span>
+              </a>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

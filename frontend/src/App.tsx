@@ -28,13 +28,17 @@ import { LogViewer } from './components/LogViewer'
 import { InputHistoryPanel } from './components/InputHistoryPanel'
 import { SignalPanel } from './components/SignalPanel'
 import { DailyReportPanel } from './components/DailyReportPanel'
+import { SentimentPanel } from './components/SentimentPanel'
+import { DivisionPanel } from './components/DivisionPanel'
+import { WorkerJobPanel } from './components/WorkerJobPanel'
+import { TokenUsagePanel } from './components/TokenUsagePanel'
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette'
 import { NotificationBell } from './components/NotificationBell'
 import { PanelWrapper } from './components/PanelWrapper'
 import { GridLayout } from './components/GridLayout'
 import { useLayoutSettings } from './hooks/useLayoutSettings'
 
-type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'inputhistory' | 'dailyreport' | 'models' | 'logs' | 'settings'
+type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'inputhistory' | 'dailyreport' | 'sentiment' | 'divisions' | 'workers' | 'tokenusage' | 'models' | 'logs' | 'settings'
 
 function AppInner() {
   const { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, collectorAlert, researchUpdate, researchComplete } = useWebSocket()
@@ -184,7 +188,7 @@ function AppInner() {
 
       {/* Navigation */}
       <nav className="bg-slate-800/40 border-b border-slate-700/30 px-4 flex gap-1 overflow-x-auto">
-        {(['home', 'stocks', 'realestate', 'signals', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
+        {(['home', 'divisions', 'workers', 'tokenusage', 'stocks', 'realestate', 'signals', 'sentiment', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -309,6 +313,30 @@ function AppInner() {
         {layout.mode === 'focus' && view === 'dailyreport' && (
           <PanelWrapper title="Daily Reports" interval={60000} refreshTrigger={globalRefresh}>
             <DailyReportPanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'sentiment' && (
+          <PanelWrapper title="Sentiment" interval={60000} refreshTrigger={globalRefresh}>
+            <SentimentPanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'divisions' && (
+          <PanelWrapper title="Divisions" interval={30000} refreshTrigger={globalRefresh}>
+            <DivisionPanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'workers' && (
+          <PanelWrapper title="Workers" interval={15000} refreshTrigger={globalRefresh}>
+            <WorkerJobPanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'tokenusage' && (
+          <PanelWrapper title="Token Usage" interval={60000} refreshTrigger={globalRefresh}>
+            <TokenUsagePanel />
           </PanelWrapper>
         )}
 

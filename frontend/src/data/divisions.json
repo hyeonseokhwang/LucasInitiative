@@ -1,0 +1,238 @@
+{
+  "ceo": {
+    "name": "Lucas",
+    "nameKo": "루카스",
+    "role": "CEO & Founder",
+    "roleKo": "대표"
+  },
+  "commander": {
+    "name": "Commander",
+    "nameKo": "사령관",
+    "role": "AI Orchestrator (Claude Opus)",
+    "roleKo": "AI 오케스트레이터 (Claude Opus)"
+  },
+  "divisions": [
+    {
+      "id": "rnd",
+      "name": "R&D",
+      "nameKo": "기술개발부",
+      "color": "blue",
+      "icon": "flask",
+      "workers": ["commander", "worker-1", "worker-2"],
+      "products": [
+        {
+          "id": "command-center",
+          "name": "Command Center",
+          "nameKo": "커맨드 센터",
+          "desc": "Multi-agent orchestration platform",
+          "descKo": "멀티에이전트 오케스트레이션 플랫폼",
+          "port": 9000,
+          "url": "http://localhost:9000",
+          "healthUrl": "http://localhost:9000/api/health",
+          "status": "running",
+          "stack": ["Node.js", "Express", "Socket.IO", "node-pty"],
+          "phase": "production",
+          "revenueModel": null
+        },
+        {
+          "id": "llm-village",
+          "name": "LLM Village",
+          "nameKo": "LLM 빌리지",
+          "desc": "Multi-agent simulation world",
+          "descKo": "멀티에이전트 시뮬레이션 세계",
+          "port": 8888,
+          "url": "http://localhost:8888",
+          "healthUrl": "http://localhost:8888/health",
+          "status": "running",
+          "stack": ["Python", "FastAPI", "Ollama", "SQLite"],
+          "phase": "production",
+          "revenueModel": null
+        },
+        {
+          "id": "npc-engine",
+          "name": "NPC Engine",
+          "nameKo": "NPC 엔진",
+          "desc": "AI character simulation engine",
+          "descKo": "AI 캐릭터 시뮬레이션 엔진",
+          "port": 8889,
+          "url": "http://localhost:8889",
+          "healthUrl": "http://localhost:8889/health",
+          "status": "running",
+          "stack": ["Python", "FastAPI", "Ollama"],
+          "phase": "production",
+          "revenueModel": null
+        }
+      ]
+    },
+    {
+      "id": "products",
+      "name": "Products",
+      "nameKo": "제품사업부",
+      "color": "emerald",
+      "icon": "rocket",
+      "workers": ["worker-3", "worker-4"],
+      "products": [
+        {
+          "id": "video-localizer",
+          "name": "AI Video Localizer",
+          "nameKo": "AI 영상 로컬라이저",
+          "desc": "Video translation & dubbing service",
+          "descKo": "영상 번역 및 더빙 서비스",
+          "port": 8080,
+          "url": "http://localhost:8080",
+          "healthUrl": "http://localhost:8080/health",
+          "status": "running",
+          "stack": ["Python", "FastAPI", "Whisper", "TTS", "FFmpeg"],
+          "phase": "production",
+          "revenueModel": "SaaS (per-video pricing)"
+        },
+        {
+          "id": "youtube-summarizer",
+          "name": "YouTube Summarizer",
+          "nameKo": "유튜브 요약기",
+          "desc": "AI-powered video summarization",
+          "descKo": "AI 기반 영상 요약 서비스",
+          "port": null,
+          "url": null,
+          "healthUrl": null,
+          "status": "developing",
+          "stack": ["Python", "React", "Whisper", "Claude API"],
+          "phase": "development",
+          "revenueModel": "Freemium"
+        },
+        {
+          "id": "audio-transcriber",
+          "name": "Lucas Audio Transcriber",
+          "nameKo": "루카스 오디오 트랜스크라이버",
+          "desc": "Speech-to-document converter",
+          "descKo": "음성을 문서로 변환",
+          "port": null,
+          "url": null,
+          "healthUrl": null,
+          "status": "running",
+          "stack": ["Python", "Whisper", "Claude API"],
+          "phase": "production",
+          "revenueModel": null
+        },
+        {
+          "id": "voice-scheduler",
+          "name": "Voice Scheduler",
+          "nameKo": "음성 스케줄러",
+          "desc": "Voice-controlled calendar & assistant",
+          "descKo": "음성 일정 관리 + AI 비서",
+          "port": 7778,
+          "url": "http://localhost:7778",
+          "healthUrl": "http://localhost:7778/api/health",
+          "status": "running",
+          "stack": ["Python", "FastAPI", "React", "Edge TTS", "Whisper"],
+          "phase": "production",
+          "revenueModel": null
+        }
+      ]
+    },
+    {
+      "id": "investment",
+      "name": "Investment",
+      "nameKo": "투자분석부",
+      "color": "amber",
+      "icon": "chart",
+      "workers": ["worker-1", "worker-14"],
+      "products": [
+        {
+          "id": "stock-analysis",
+          "name": "Stock Analysis System",
+          "nameKo": "주식 분석 시스템",
+          "desc": "17-stock tracking with signal detection",
+          "descKo": "17종목 추적 + 시그널 감지",
+          "port": 7777,
+          "url": "http://localhost:7777",
+          "healthUrl": "http://localhost:7777/api/health",
+          "status": "running",
+          "stack": ["Python", "FastAPI", "React", "SQLite"],
+          "phase": "production",
+          "revenueModel": null
+        },
+        {
+          "id": "realestate-analysis",
+          "name": "Real Estate Analysis",
+          "nameKo": "부동산 분석 시스템",
+          "desc": "Seoul 10-district market analysis",
+          "descKo": "서울 10개구 시장 분석",
+          "port": 7777,
+          "url": "http://localhost:7777",
+          "healthUrl": "http://localhost:7777/api/health",
+          "status": "running",
+          "stack": ["Python", "FastAPI", "React", "SQLite"],
+          "phase": "production",
+          "revenueModel": null
+        },
+        {
+          "id": "daily-report",
+          "name": "Financial Daily Report",
+          "nameKo": "금융 일일리포트",
+          "desc": "LLM-generated financial analysis reports",
+          "descKo": "LLM 자동 생성 금융 분석 리포트",
+          "port": null,
+          "url": null,
+          "healthUrl": null,
+          "status": "developing",
+          "stack": ["Python", "Claude API", "FastAPI"],
+          "phase": "development",
+          "revenueModel": null
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "name": "Operations",
+      "nameKo": "경영지원부",
+      "color": "cyan",
+      "icon": "cog",
+      "workers": ["worker-13", "worker-14"],
+      "products": [
+        {
+          "id": "mobile-commander",
+          "name": "Mobile Commander",
+          "nameKo": "모바일 커맨더",
+          "desc": "Mobile remote control for Lucas system",
+          "descKo": "모바일 원격 관제 시스템",
+          "port": 3004,
+          "url": "http://localhost:3004",
+          "healthUrl": "http://localhost:3004/health",
+          "status": "running",
+          "stack": ["Node.js", "Express", "HTML5"],
+          "phase": "production",
+          "revenueModel": null
+        },
+        {
+          "id": "health-monitor",
+          "name": "Health Monitor",
+          "nameKo": "헬스 모니터",
+          "desc": "Service monitoring & alerting",
+          "descKo": "서비스 모니터링 및 알림",
+          "port": null,
+          "url": null,
+          "healthUrl": null,
+          "status": "running",
+          "stack": ["Python", "React", "WebSocket"],
+          "phase": "production",
+          "revenueModel": null
+        },
+        {
+          "id": "vram-manager",
+          "name": "VRAM Manager",
+          "nameKo": "VRAM 매니저",
+          "desc": "GPU resource allocation & management",
+          "descKo": "GPU 자원 할당 및 관리",
+          "port": null,
+          "url": null,
+          "healthUrl": null,
+          "status": "running",
+          "stack": ["Python", "nvidia-smi"],
+          "phase": "production",
+          "revenueModel": null
+        }
+      ]
+    }
+  ]
+}

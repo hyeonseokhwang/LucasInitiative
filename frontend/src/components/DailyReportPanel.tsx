@@ -10,12 +10,41 @@ interface DailyReport {
   created_at: string
 }
 
-/** Lightweight markdown → HTML (headings, bold, italic, lists, hr, code blocks, links) */
+/** Lightweight markdown → HTML (headings, bold, italic, lists, hr, code blocks, tables, links) */
 function renderMarkdown(md: string): string {
-  let html = md
-    // Code blocks
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-slate-900/80 rounded-lg p-3 my-2 overflow-x-auto text-xs"><code>$2</code></pre>')
-    // Headings
+  // First pass: extract code blocks and tables to protect from inline processing
+  const codeBlocks: string[] = []
+  let processed = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_m, lang, code) => {
+    const idx = codeBlocks.length
+    const langLabel = lang ? `<span class="text-[10px] text-slate-500 absolute top-1 right-2">${lang}</span>` : ''
+    codeBlocks.push(
+      `<div class="relative"><pre class="bg-slate-900/80 rounded-lg p-3 my-2 overflow-x-auto text-xs text-slate-300 font-mono">${langLabel}<code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre></div>`
+    )
+    return `%%CODEBLOCK_${idx}%%`
+  })
+
+  // Inline code
+  processed = processed.replace(/`([^`]+)`/g, '<code class="bg-slate-900/60 px-1 py-0.5 rounded text-xs text-emerald-400 font-mono">$1</code>')
+
+  // Tables: detect markdown table blocks
+  processed = processed.replace(
+    /^(\|.+\|)\n(\|[\s:|-]+\|)\n((?:\|.+\|\n?)+)/gm,
+    (_m, header: string, _sep: string, body: string) => {
+      const thCells = header.split('|').filter(Boolean).map((c: string) => c.trim())
+      const rows = body.trim().split('\n').map((row: string) =>
+        row.split('|').filter(Boolean).map((c: string) => c.trim())
+      )
+      const ths = thCells.map((c: string) => `<th class="px-3 py-1.5 text-left text-xs font-semibold text-slate-300 bg-slate-800/60">${c}</th>`).join('')
+      const trs = rows.map((cols: string[]) => {
+        const tds = cols.map((c: string) => `<td class="px-3 py-1.5 text-xs text-slate-400 border-t border-slate-700/30">${c}</td>`).join('')
+        return `<tr class="hover:bg-slate-700/20">${tds}</tr>`
+      }).join('')
+      return `<div class="overflow-x-auto my-3 rounded-lg border border-slate-700/50"><table class="w-full"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`
+    }
+  )
+
+  // Headings
+  processed = processed
     .replace(/^#### (.+)$/gm, '<h4 class="text-sm font-semibold text-slate-200 mt-4 mb-1">$1</h4>')
     .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold text-slate-100 mt-4 mb-2">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-white mt-5 mb-2">$1</h2>')
@@ -25,15 +54,22 @@ function renderMarkdown(md: string): string {
     // Bold & Italic
     .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Ordered lists
+    .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-slate-300">$1</li>')
     // Unordered lists
     .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-slate-300">$1</li>')
     // Links
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline">$1</a>')
-    // Line breaks (double newlines → paragraph, single → br)
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">$1</a>')
+    // Line breaks
     .replace(/\n\n/g, '</p><p class="text-sm text-slate-300 leading-relaxed mb-2">')
     .replace(/\n/g, '<br />')
 
-  return `<p class="text-sm text-slate-300 leading-relaxed mb-2">${html}</p>`
+  // Restore code blocks
+  codeBlocks.forEach((block, i) => {
+    processed = processed.replace(`%%CODEBLOCK_${i}%%`, block)
+  })
+
+  return `<p class="text-sm text-slate-300 leading-relaxed mb-2">${processed}</p>`
 }
 
 export function DailyReportPanel() {
@@ -47,8 +83,24 @@ export function DailyReportPanel() {
   const loadReports = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await api.dailyReports(30)
-      setReports(data.reports || [])
+      // Try both existing daily_reports table and Worker-1's research reports API
+      const [dailyData, researchData] = await Promise.allSettled([
+        api.dailyReports(30),
+        api.researchReports(20),
+      ])
+      const dailyReports = dailyData.status === 'fulfilled' ? (dailyData.value.reports || []) : []
+      const researchReports = researchData.status === 'fulfilled'
+        ? (researchData.value.reports || []).map((r: any) => ({
+            id: r.id,
+            report_type: r.trigger_type || 'research',
+            title: r.title || r.query || 'Research Report',
+            content: r.content || r.summary || '',
+            created_at: r.created_at,
+          }))
+        : []
+      // Merge and deduplicate by id prefix
+      const merged = [...dailyReports, ...researchReports]
+      setReports(merged)
     } catch { setReports([]) }
     finally { setLoading(false) }
   }, [])

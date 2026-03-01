@@ -40,6 +40,10 @@ export interface Messages {
     signals: string
     inputhistory: string
     dailyreport: string
+    sentiment: string
+    divisions: string
+    workers: string
+    tokenusage: string
     models: string
     logs: string
     settings: string
@@ -67,6 +71,69 @@ export interface Messages {
     signalCount: string
   }
 
+  // Token Usage
+  tok_panel: {
+    title: string
+    lastUpdated: string
+    planUsage: string
+    usageSummary: string
+    totalTokens: string
+    inputTokens: string
+    outputTokens: string
+    apiCalls: string
+    estimatedCost: string
+    projections: string
+    dailyAvg: string
+    weeklyEst: string
+    monthlyEst: string
+    hourlyUsage: string
+    dailyUsage: string
+    apiCostComparison: string
+    apiCostDesc: string
+    equivalent: string
+    costOptTitle: string
+    singlePlan: string
+    dualPlan: string
+    apiDirect: string
+    dualBenefit: string
+    apiDirectNote: string
+    currentUsage: string
+    verdict: string
+    noData: string
+  }
+
+  // Worker Jobs
+  wj: {
+    title: string
+    active: string
+    totalReports: string
+    polling: string
+    liveView: string
+    timeline: string
+    noWorkers: string
+    noWorkersHint: string
+    reports: string
+    recentReports: string
+    needsDecision: string
+    noReports: string
+  }
+
+  // Division management
+  div: {
+    title: string
+    divisions: string
+    products: string
+    workers: string
+    running: string
+    uptime: string
+    cardView: string
+    orgChart: string
+    openLink: string
+    techStack: string
+    revenueModel: string
+    devPhase: string
+  }
+
   // Home tab
   home: {
     systemStatus: string
@@ -92,6 +159,13 @@ export interface Messages {
     remaining: string
     noUsageData: string
     view: string
+    serviceStatus: string
+    online: string
+    offline: string
+    todayActivity: string
+    workerReports: string
+    signalsDetected: string
+    quickLinks: string
   }
 
   // Stocks tab
@@ -163,6 +237,29 @@ export interface Messages {
     maxPrice: string
     avgArea: string
     perM2: string
+  }
+
+  // Sentiment Analysis
+  sent: {
+    title: string
+    positive: string
+    negative: string
+    neutral: string
+    score: string
+    headlines: string
+    noData: string
+    noDataHint: string
+    loading: string
+    source: string
+    date: string
+    overall: string
+    bullish: string
+    bearish: string
+    mixed: string
+    searchSymbol: string
+    searchPlaceholder: string
+    sentimentScore: string
+    newsCount: string
   }
 
   // Home - Challenge widget
@@ -264,6 +361,10 @@ const ko: Messages = {
     signals: '시그널',
     inputhistory: '입력내역',
     dailyreport: '일일리포트',
+    sentiment: '감성분석',
+    divisions: '사업부',
+    workers: '워커',
+    tokenusage: '토큰',
     models: '모델',
     logs: '로그',
     settings: '설정',
@@ -290,6 +391,66 @@ const ko: Messages = {
     signalCount: '개 시그널',
   },
 
+  div: {
+    title: '사업부 관리',
+    divisions: '개 부서',
+    products: '개 제품',
+    workers: '명 워커',
+    running: '가동중',
+    uptime: '가동률',
+    cardView: '카드',
+    orgChart: '조직도',
+    openLink: '접속',
+    techStack: '기술 스택',
+    revenueModel: '수익 모델',
+    devPhase: '개발 단계',
+  },
+
+  tok_panel: {
+    title: '토큰 사용량 분석',
+    lastUpdated: '마지막 업데이트',
+    planUsage: '플랜 사용량',
+    usageSummary: '사용량 요약',
+    totalTokens: '총 토큰',
+    inputTokens: '입력 토큰',
+    outputTokens: '출력 토큰',
+    apiCalls: 'API 호출',
+    estimatedCost: '추정 비용',
+    projections: '사용량 예측',
+    dailyAvg: '일 평균',
+    weeklyEst: '주간 예상',
+    monthlyEst: '월간 예상',
+    hourlyUsage: '시간별 사용량 (오늘)',
+    dailyUsage: '일별 사용량 (최근 14일)',
+    apiCostComparison: 'API 비용 환산',
+    apiCostDesc: '동일한 사용량을 Claude API로 직접 처리했다면 얼마였을지 비교합니다.',
+    equivalent: '환산 비용',
+    costOptTitle: '비용 최적화 분석',
+    singlePlan: '싱글 플랜 (Max)',
+    dualPlan: '듀얼 플랜 (Max x2)',
+    apiDirect: 'API 직접 사용',
+    dualBenefit: '2배 용량, 병렬 워커 분산',
+    apiDirectNote: 'Opus 기준, 사용한 만큼만 과금',
+    currentUsage: '현재 사용량',
+    verdict: '분석 결과',
+    noData: '데이터 없음',
+  },
+
+  wj: {
+    title: '워커 현황',
+    active: '작업중',
+    totalReports: '건 보고',
+    polling: '폴링',
+    liveView: '실시간',
+    timeline: '타임라인',
+    noWorkers: '활성 워커 없음',
+    noWorkersHint: 'Command Center(localhost:9000)가 실행 중인지 확인하세요',
+    reports: '건 보고',
+    recentReports: '최근 보고',
+    needsDecision: '판단 필요',
+    noReports: '보고 내역 없음',
+  },
+
   home: {
     systemStatus: '시스템 상태',
     dashboard: '대시보드',
@@ -314,6 +475,13 @@ const ko: Messages = {
     remaining: '잔여',
     noUsageData: '사용 데이터 없음',
     view: '보기',
+    serviceStatus: '서비스 상태',
+    online: '온라인',
+    offline: '오프라인',
+    todayActivity: '오늘의 활동',
+    workerReports: '워커 보고',
+    signalsDetected: '감지된 시그널',
+    quickLinks: '퀵 링크',
   },
 
   stocks: {
@@ -383,6 +551,28 @@ const ko: Messages = {
     maxPrice: '최대',
     avgArea: '평균 면적',
     perM2: '평당가',
+  },
+
+  sent: {
+    title: '금융 감성분석',
+    positive: '긍정',
+    negative: '부정',
+    neutral: '중립',
+    score: '점수',
+    headlines: '뉴스 헤드라인',
+    noData: '감성분석 데이터가 없습니다',
+    noDataHint: 'Worker-1이 LLM 감성분석을 완료하면 여기서 확인할 수 있습니다',
+    loading: '감성분석 로딩 중...',
+    source: '출처',
+    date: '날짜',
+    overall: '종합',
+    bullish: '강세',
+    bearish: '약세',
+    mixed: '혼합',
+    searchSymbol: '종목 검색',
+    searchPlaceholder: '종목명 또는 코드...',
+    sentimentScore: '감성 점수',
+    newsCount: '뉴스 수',
   },
 
   challenge: {
@@ -481,6 +671,10 @@ const en: Messages = {
     signals: 'Signals',
     inputhistory: 'History',
     dailyreport: 'Daily Report',
+    sentiment: 'Sentiment',
+    divisions: 'Divisions',
+    workers: 'Workers',
+    tokenusage: 'Tokens',
     models: 'Models',
     logs: 'Logs',
     settings: 'Settings',
@@ -507,6 +701,66 @@ const en: Messages = {
     signalCount: 'signals',
   },
 
+  div: {
+    title: 'Division Management',
+    divisions: 'divisions',
+    products: 'products',
+    workers: 'workers',
+    running: 'running',
+    uptime: 'Uptime',
+    cardView: 'Cards',
+    orgChart: 'Org Chart',
+    openLink: 'Open',
+    techStack: 'Tech Stack',
+    revenueModel: 'Revenue Model',
+    devPhase: 'Dev Phase',
+  },
+
+  tok_panel: {
+    title: 'Token Usage Analytics',
+    lastUpdated: 'Last updated',
+    planUsage: 'Plan Usage',
+    usageSummary: 'Usage Summary',
+    totalTokens: 'Total Tokens',
+    inputTokens: 'Input Tokens',
+    outputTokens: 'Output Tokens',
+    apiCalls: 'API Calls',
+    estimatedCost: 'Est. Cost',
+    projections: 'Projections',
+    dailyAvg: 'Daily Avg',
+    weeklyEst: 'Weekly Est.',
+    monthlyEst: 'Monthly Est.',
+    hourlyUsage: 'Hourly Usage (Today)',
+    dailyUsage: 'Daily Usage (Last 14 days)',
+    apiCostComparison: 'API Cost Equivalent',
+    apiCostDesc: 'What would the same usage cost if processed directly via Claude API.',
+    equivalent: 'Equivalent',
+    costOptTitle: 'Cost Optimization Analysis',
+    singlePlan: 'Single Plan (Max)',
+    dualPlan: 'Dual Plan (Max x2)',
+    apiDirect: 'API Direct',
+    dualBenefit: '2x capacity, parallel worker distribution',
+    apiDirectNote: 'Opus pricing, pay-per-use only',
+    currentUsage: 'Current usage',
+    verdict: 'Verdict',
+    noData: 'No data',
+  },
+
+  wj: {
+    title: 'Worker Status',
+    active: 'active',
+    totalReports: 'reports',
+    polling: 'polling',
+    liveView: 'Live',
+    timeline: 'Timeline',
+    noWorkers: 'No active workers',
+    noWorkersHint: 'Check if Command Center (localhost:9000) is running',
+    reports: 'reports',
+    recentReports: 'Recent Reports',
+    needsDecision: 'Needs Decision',
+    noReports: 'No reports yet',
+  },
+
   home: {
     systemStatus: 'System Status',
     dashboard: 'Dashboard',
@@ -531,6 +785,13 @@ const en: Messages = {
     remaining: 'remaining',
     noUsageData: 'No usage data',
     view: 'View',
+    serviceStatus: 'Service Status',
+    online: 'Online',
+    offline: 'Offline',
+    todayActivity: "Today's Activity",
+    workerReports: 'Worker Reports',
+    signalsDetected: 'Signals Detected',
+    quickLinks: 'Quick Links',
   },
 
   stocks: {
@@ -600,6 +861,28 @@ const en: Messages = {
     maxPrice: 'Max',
     avgArea: 'Avg Area',
     perM2: 'Per m\u00B2',
+  },
+
+  sent: {
+    title: 'Financial Sentiment',
+    positive: 'Positive',
+    negative: 'Negative',
+    neutral: 'Neutral',
+    score: 'Score',
+    headlines: 'News Headlines',
+    noData: 'No sentiment data available',
+    noDataHint: 'Sentiment analysis will appear here once Worker-1 completes LLM processing',
+    loading: 'Loading sentiment...',
+    source: 'Source',
+    date: 'Date',
+    overall: 'Overall',
+    bullish: 'Bullish',
+    bearish: 'Bearish',
+    mixed: 'Mixed',
+    searchSymbol: 'Search Symbol',
+    searchPlaceholder: 'Name or symbol...',
+    sentimentScore: 'Sentiment Score',
+    newsCount: 'News Count',
   },
 
   challenge: {
