@@ -6,6 +6,9 @@ import { useLocale } from '../hooks/useLocale'
 const SETTINGS_KEY = 'lucas-dashboard-settings'
 
 interface DashboardSettings {
+  // Appearance
+  theme: 'dark' | 'light'
+  autoRefreshInterval: number // seconds: 15, 30, 60, 0 (disabled)
   // Ollama
   defaultModel: string
   // API Keys (stored masked, actual key in separate key)
@@ -23,6 +26,8 @@ interface DashboardSettings {
 }
 
 const DEFAULT_SETTINGS: DashboardSettings = {
+  theme: 'dark',
+  autoRefreshInterval: 30,
   defaultModel: 'qwen2.5:14b',
   anthropicKeyMasked: '',
   naverClientIdMasked: '',
@@ -119,6 +124,12 @@ export function SettingsPanel() {
 
   useEffect(() => { fetchModels() }, [fetchModels])
 
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', settings.theme === 'light')
+    document.documentElement.classList.toggle('dark', settings.theme === 'dark')
+  }, [settings.theme])
+
   const update = (patch: Partial<DashboardSettings>) => {
     setSettings(prev => {
       const next = { ...prev, ...patch }
@@ -186,6 +197,66 @@ export function SettingsPanel() {
               >
                 English
               </button>
+            </div>
+          </FieldRow>
+        </Section>
+
+        {/* 0b. Theme */}
+        <Section
+          title={s.theme}
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>}
+        >
+          <FieldRow label={s.theme} hint={s.themeHint}>
+            <div className="flex gap-2">
+              <button
+                onClick={() => update({ theme: 'dark' })}
+                className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${
+                  settings.theme === 'dark'
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                    : 'bg-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700 border border-transparent'
+                }`}
+              >
+                {s.themeDark}
+              </button>
+              <button
+                onClick={() => update({ theme: 'light' })}
+                className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${
+                  settings.theme === 'light'
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                    : 'bg-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700 border border-transparent'
+                }`}
+              >
+                {s.themeLight}
+              </button>
+            </div>
+          </FieldRow>
+        </Section>
+
+        {/* 0c. Auto Refresh Interval */}
+        <Section
+          title={s.autoRefresh}
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.22-8.56"/><path d="M21 3v9h-9"/></svg>}
+        >
+          <FieldRow label={s.autoRefresh} hint={s.autoRefreshHint}>
+            <div className="flex gap-2">
+              {[
+                { value: 15, label: '15s' },
+                { value: 30, label: '30s' },
+                { value: 60, label: '60s' },
+                { value: 0, label: s.refreshDisabled },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => update({ autoRefreshInterval: opt.value })}
+                  className={`flex-1 px-2 py-2 text-xs rounded-md transition-colors ${
+                    settings.autoRefreshInterval === opt.value
+                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                      : 'bg-slate-700/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700 border border-transparent'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </FieldRow>
         </Section>

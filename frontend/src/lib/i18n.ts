@@ -358,6 +358,13 @@ export interface Messages {
     alertHint: string
     vramAlertHint: string
     resetDefaults: string
+    theme: string
+    themeHint: string
+    themeDark: string
+    themeLight: string
+    autoRefresh: string
+    autoRefreshHint: string
+    refreshDisabled: string
   }
 }
 
@@ -699,6 +706,13 @@ const ko: Messages = {
     alertHint: '초과 시 알림',
     vramAlertHint: 'VRAM 사용량 알림',
     resetDefaults: '기본값으로 초기화',
+    theme: '테마',
+    themeHint: '인터페이스 테마',
+    themeDark: '다크',
+    themeLight: '라이트',
+    autoRefresh: '자동 새로고침',
+    autoRefreshHint: '패널 데이터 자동 갱신 간격',
+    refreshDisabled: '비활성',
   },
 }
 
@@ -1040,6 +1054,13 @@ const en: Messages = {
     alertHint: 'Alert when exceeded',
     vramAlertHint: 'VRAM usage alert',
     resetDefaults: 'Reset to Defaults',
+    theme: 'Theme',
+    themeHint: 'Interface theme',
+    themeDark: 'Dark',
+    themeLight: 'Light',
+    autoRefresh: 'Auto Refresh',
+    autoRefreshHint: 'Panel data auto-refresh interval',
+    refreshDisabled: 'Disabled',
   },
 }
 
