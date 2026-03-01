@@ -32,13 +32,14 @@ import { SentimentPanel } from './components/SentimentPanel'
 import { DivisionPanel } from './components/DivisionPanel'
 import { WorkerJobPanel } from './components/WorkerJobPanel'
 import { TokenUsagePanel } from './components/TokenUsagePanel'
+import { LLMActivityPanel } from './components/LLMActivityPanel'
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette'
 import { NotificationBell } from './components/NotificationBell'
 import { PanelWrapper } from './components/PanelWrapper'
 import { GridLayout } from './components/GridLayout'
 import { useLayoutSettings } from './hooks/useLayoutSettings'
 
-type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'inputhistory' | 'dailyreport' | 'sentiment' | 'divisions' | 'workers' | 'tokenusage' | 'models' | 'logs' | 'settings'
+type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'inputhistory' | 'dailyreport' | 'sentiment' | 'divisions' | 'workers' | 'tokenusage' | 'llmactivity' | 'models' | 'logs' | 'settings'
 
 function AppInner() {
   const { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, collectorAlert, researchUpdate, researchComplete } = useWebSocket()
@@ -188,7 +189,7 @@ function AppInner() {
 
       {/* Navigation */}
       <nav className="bg-slate-800/40 border-b border-slate-700/30 px-4 flex gap-1 overflow-x-auto">
-        {(['home', 'divisions', 'workers', 'tokenusage', 'stocks', 'realestate', 'signals', 'sentiment', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
+        {(['home', 'divisions', 'workers', 'tokenusage', 'llmactivity', 'stocks', 'realestate', 'signals', 'sentiment', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -337,6 +338,12 @@ function AppInner() {
         {layout.mode === 'focus' && view === 'tokenusage' && (
           <PanelWrapper title="Token Usage" interval={60000} refreshTrigger={globalRefresh}>
             <TokenUsagePanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'llmactivity' && (
+          <PanelWrapper title="LLM Activity" interval={30000} refreshTrigger={globalRefresh}>
+            <LLMActivityPanel />
           </PanelWrapper>
         )}
 

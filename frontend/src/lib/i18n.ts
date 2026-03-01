@@ -44,6 +44,7 @@ export interface Messages {
     divisions: string
     workers: string
     tokenusage: string
+    llmactivity: string
     models: string
     logs: string
     settings: string
@@ -69,6 +70,33 @@ export interface Messages {
     moderate: string
     detected: string
     signalCount: string
+  }
+
+  // LLM Activity
+  llm: {
+    title: string
+    active: string
+    available: string
+    swaps: string
+    polling: string
+    currentModel: string
+    noActive: string
+    noActiveHint: string
+    vramUsage: string
+    freeVram: string
+    vramChart: string
+    modelStats: string
+    activeTime: string
+    avgGpu: string
+    avgVram: string
+    samples: string
+    swapHistory: string
+    availableModels: string
+    villageStatus: string
+    villageDay: string
+    conversations: string
+    tokensGenerated: string
+    noData: string
   }
 
   // Token Usage
@@ -365,6 +393,7 @@ const ko: Messages = {
     divisions: '사업부',
     workers: '워커',
     tokenusage: '토큰',
+    llmactivity: 'LLM',
     models: '모델',
     logs: '로그',
     settings: '설정',
@@ -404,6 +433,32 @@ const ko: Messages = {
     techStack: '기술 스택',
     revenueModel: '수익 모델',
     devPhase: '개발 단계',
+  },
+
+  llm: {
+    title: '로컬 LLM 활동',
+    active: '활성',
+    available: '사용 가능',
+    swaps: '스왑',
+    polling: '폴링',
+    currentModel: '현재 활성 모델',
+    noActive: '활성 모델 없음',
+    noActiveHint: 'Ollama에 로드된 모델이 없습니다',
+    vramUsage: 'VRAM 사용량',
+    freeVram: '여유 VRAM',
+    vramChart: 'VRAM 사용량 추이',
+    modelStats: '모델별 통계',
+    activeTime: '활동 시간',
+    avgGpu: '평균 GPU',
+    avgVram: '평균 VRAM',
+    samples: '샘플 수',
+    swapHistory: '모델 스왑 히스토리',
+    availableModels: '사용 가능한 모델',
+    villageStatus: 'LLM Village 상태',
+    villageDay: '시뮬레이션 일차',
+    conversations: '대화 수',
+    tokensGenerated: '생성 토큰',
+    noData: '데이터 없음',
   },
 
   tok_panel: {
@@ -675,6 +730,7 @@ const en: Messages = {
     divisions: 'Divisions',
     workers: 'Workers',
     tokenusage: 'Tokens',
+    llmactivity: 'LLM',
     models: 'Models',
     logs: 'Logs',
     settings: 'Settings',
@@ -714,6 +770,32 @@ const en: Messages = {
     techStack: 'Tech Stack',
     revenueModel: 'Revenue Model',
     devPhase: 'Dev Phase',
+  },
+
+  llm: {
+    title: 'Local LLM Activity',
+    active: 'active',
+    available: 'available',
+    swaps: 'swaps',
+    polling: 'polling',
+    currentModel: 'Current Active Model',
+    noActive: 'No active model',
+    noActiveHint: 'No models loaded in Ollama',
+    vramUsage: 'VRAM Usage',
+    freeVram: 'Free VRAM',
+    vramChart: 'VRAM Usage Timeline',
+    modelStats: 'Model Statistics',
+    activeTime: 'Active Time',
+    avgGpu: 'Avg GPU',
+    avgVram: 'Avg VRAM',
+    samples: 'Samples',
+    swapHistory: 'Model Swap History',
+    availableModels: 'Available Models',
+    villageStatus: 'LLM Village Status',
+    villageDay: 'Simulation Day',
+    conversations: 'Conversations',
+    tokensGenerated: 'Tokens Generated',
+    noData: 'No data',
   },
 
   tok_panel: {

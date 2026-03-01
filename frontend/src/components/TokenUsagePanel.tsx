@@ -153,25 +153,14 @@ export function TokenUsagePanel() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Estimate session usage (since 03:00 today)
-  const sessionStartHour = 3
-  const now = new Date()
-  const hoursActive = Math.max(1, now.getHours() - sessionStartHour + (now.getMinutes() / 60))
-
-  // Simulate hourly breakdown from daily data
-  const todayData = daily.find(d => d.day === now.toISOString().slice(0, 10))
-  const todayTokens = todayData ? (todayData.input_tokens + todayData.output_tokens) : 0
-  const avgTokensPerHour = hoursActive > 0 ? Math.round(todayTokens / hoursActive) : 0
-
-  // Generate hourly estimates for bar chart
-  const hourlyBars = Array.from({ length: Math.min(Math.ceil(hoursActive), 24) }, (_, i) => {
-    const hour = sessionStartHour + i
-    return {
-      label: `${hour.toString().padStart(2, '0')}:00`,
-      tokens: avgTokensPerHour + Math.round((Math.random() - 0.5) * avgTokensPerHour * 0.4),
-    }
-  })
-  const maxHourly = Math.max(...hourlyBars.map(h => h.tokens), 1)
+  // Daily usage as bar chart data (real data, no simulation)
+  const dailyBars = [...daily].reverse().slice(-14).map(d => ({
+    label: d.day?.slice(5) || '',
+    tokens: (d.input_tokens || 0) + (d.output_tokens || 0),
+    cost: d.cost_usd || 0,
+    calls: d.calls || 0,
+  }))
+  const maxDaily = Math.max(...dailyBars.map(d => d.tokens), 1)
 
   // Cost comparison calculations
   const totalTokensUsed = usage?.total_tokens || 0
@@ -283,32 +272,16 @@ export function TokenUsagePanel() {
               </div>
             </div>
 
-            {/* Hourly Usage Bar Chart */}
-            <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 p-4">
-              <div className="text-xs text-slate-500 font-medium mb-3">{tk.hourlyUsage}</div>
-              {hourlyBars.length > 0 ? (
-                <BarChart
-                  data={hourlyBars}
-                  maxVal={maxHourly}
-                  labelKey="label"
-                  valueKey="tokens"
-                  colorFn={(v) => v > maxHourly * 0.8 ? 'bg-red-500' : v > maxHourly * 0.5 ? 'bg-amber-500' : 'bg-blue-500'}
-                />
-              ) : (
-                <div className="text-xs text-slate-500 py-4 text-center">{tk.noData}</div>
-              )}
-            </div>
-
-            {/* Daily Usage Chart */}
+            {/* Daily Usage Bar Chart */}
             <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 p-4">
               <div className="text-xs text-slate-500 font-medium mb-3">{tk.dailyUsage}</div>
-              {daily.length > 0 ? (
+              {dailyBars.length > 0 ? (
                 <BarChart
-                  data={[...daily].reverse().slice(-14)}
-                  maxVal={Math.max(...daily.map(d => (d.input_tokens || 0) + (d.output_tokens || 0)), 1)}
-                  labelKey="day"
-                  valueKey="input_tokens"
-                  colorFn={() => 'bg-emerald-500'}
+                  data={dailyBars}
+                  maxVal={maxDaily}
+                  labelKey="label"
+                  valueKey="tokens"
+                  colorFn={(v) => v > maxDaily * 0.8 ? 'bg-red-500' : v > maxDaily * 0.5 ? 'bg-amber-500' : 'bg-emerald-500'}
                 />
               ) : (
                 <div className="text-xs text-slate-500 py-4 text-center">{tk.noData}</div>
