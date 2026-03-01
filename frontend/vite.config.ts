@@ -14,4 +14,13 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-charts': ['recharts', 'lightweight-charts'],
+        },
+      },
+    },
+  },
 })

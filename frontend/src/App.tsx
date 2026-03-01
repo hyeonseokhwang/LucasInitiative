@@ -310,24 +310,29 @@ function AppInner() {
       </header>
 
       {/* Navigation */}
-      <nav className="bg-slate-800/40 border-b border-slate-700/30 px-4 flex gap-1 overflow-x-auto">
+      <nav className="bg-slate-800/40 border-b border-slate-700/30 px-4 flex gap-1 overflow-x-auto scroll-smooth" style={{ scrollbarWidth: 'none' }}>
         {(['home', 'divisions', 'workers', 'tokenusage', 'llmactivity', 'stocks', 'realestate', 'signals', 'trends', 'sentiment', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
           <button
             key={v}
+            ref={el => { if (el && view === v) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }) }}
             onClick={() => setView(v)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 text-sm font-medium transition-all duration-200 whitespace-nowrap relative ${
               view === v
-                ? 'text-blue-400 border-b-2 border-blue-400'
+                ? 'text-blue-400'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             {t.nav[v]}
+            {view === v && (
+              <span className="absolute bottom-0 left-1 right-1 h-0.5 bg-blue-400 rounded-full" />
+            )}
           </button>
         ))}
       </nav>
 
       {/* Main Content */}
-      <main className="p-4 max-w-7xl mx-auto">
+      <main className="p-4 max-w-7xl mx-auto" key={view}>
+        <div className="panel-enter">
         {/* Grid Mode */}
         {layout.mode === 'grid' && (
           <GridLayout
@@ -488,6 +493,7 @@ function AppInner() {
         {layout.mode === 'focus' && view === 'settings' && (
           <SettingsPanel />
         )}
+        </div>
       </main>
 
       {/* Command Palette */}

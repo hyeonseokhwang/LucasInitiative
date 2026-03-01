@@ -99,3 +99,13 @@ body {
   scrollbar-width: thin;
   scrollbar-color: var(--chart-grid) transparent;
 }
+
+/* Panel fade-in animation */
+@keyframes panel-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-enter {
+  animation: panel-fade-in 0.2s ease-out;
+}

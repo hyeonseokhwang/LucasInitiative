@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend, Cell, PieChart, Pie,
+  LineChart, Line, Legend,
 } from 'recharts'
-import { api, fetchJson } from '../lib/api'
-import { ACCENT, SERIES_PALETTE, commonAxisProps, commonGridProps, commonTooltipProps } from '../lib/chartTheme'
-import { RefreshIndicator } from './RefreshIndicator'
+import { api } from '../lib/api'
+import { ACCENT, commonAxisProps, commonGridProps, commonTooltipProps } from '../lib/chartTheme'
+import { SkeletonCards, SkeletonChart, SkeletonTable } from './SkeletonLoader'
+import { ErrorState } from './ErrorState'
 import type { KeywordTrend, CategoryTrend, WeeklyInsight, PipelineStats, NewsItem, QueueItem } from '../types'
 
 type Tab = 'keywords' | 'insights' | 'pipeline' | 'news' | 'queue'
@@ -45,19 +46,22 @@ function DirectionBadge({ direction }: { direction: string }) {
 function KeywordsTab() {
   const [trends, setTrends] = useState<KeywordTrend[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
+    setError(false)
     try {
       const data = await api.trendsKeywords()
       setTrends(data.trends || [])
-    } catch { /* ignore */ }
+    } catch { setError(true) }
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div className="py-8 text-center text-sm text-slate-500 animate-pulse">Loading keyword trends...</div>
-  if (trends.length === 0) return <div className="py-8 text-center text-sm text-slate-500">No keyword data available yet.</div>
+  if (loading) return <div className="space-y-4"><SkeletonCards /><SkeletonChart height="h-64" /><SkeletonTable /></div>
+  if (error) return <ErrorState message="Failed to load keyword trends" hint="Check if the backend is running" onRetry={load} />
+  if (trends.length === 0) return <ErrorState message="No keyword data available yet" hint="Data will appear after the pipeline processes keywords" />
 
   const top20 = trends.slice(0, 20)
   const chartData = top20.map(t => ({
@@ -147,20 +151,23 @@ function KeywordsTab() {
 function InsightsTab() {
   const [insights, setInsights] = useState<WeeklyInsight[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const load = useCallback(async () => {
+    setError(false)
     try {
       const data = await api.trendsInsights()
       setInsights(data.insights || [])
-    } catch { /* ignore */ }
+    } catch { setError(true) }
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div className="py-8 text-center text-sm text-slate-500 animate-pulse">Loading AI insights...</div>
-  if (insights.length === 0) return <div className="py-8 text-center text-sm text-slate-500">No weekly insights available yet.</div>
+  if (loading) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="animate-pulse bg-slate-900/40 rounded-lg border border-slate-700/30 h-16" />)}</div>
+  if (error) return <ErrorState message="Failed to load AI insights" onRetry={load} />
+  if (insights.length === 0) return <ErrorState message="No weekly insights available yet" hint="Insights are generated weekly by the AI pipeline" />
 
   return (
     <div className="space-y-3">
@@ -216,19 +223,22 @@ function InsightsTab() {
 function PipelineTab() {
   const [stats, setStats] = useState<PipelineStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
+    setError(false)
     try {
       const data = await api.trendsPipeline()
       setStats(data)
-    } catch { /* ignore */ }
+    } catch { setError(true) }
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div className="py-8 text-center text-sm text-slate-500 animate-pulse">Loading pipeline stats...</div>
-  if (!stats) return <div className="py-8 text-center text-sm text-slate-500">Pipeline stats unavailable.</div>
+  if (loading) return <div className="space-y-4"><SkeletonCards /><SkeletonChart /></div>
+  if (error) return <ErrorState message="Failed to load pipeline stats" onRetry={load} />
+  if (!stats) return <ErrorState message="Pipeline stats unavailable" hint="The data pipeline may not be running" />
 
   const session = stats.session || {} as any
   const historical = stats.historical || {} as any
@@ -375,10 +385,14 @@ function NewsTab() {
         ))}
       </div>
 
-      {loading && <div className="py-8 text-center text-sm text-slate-500 animate-pulse">Loading news...</div>}
+      {loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[1,2,3,4].map(i => <div key={i} className="animate-pulse bg-slate-900/40 rounded-lg border border-slate-700/30 h-28" />)}
+        </div>
+      )}
 
       {!loading && items.length === 0 && (
-        <div className="py-8 text-center text-sm text-slate-500">No news items available.</div>
+        <ErrorState message="No news items available" hint="News will appear as the pipeline collects data" />
       )}
 
       {!loading && items.length > 0 && (
@@ -441,7 +455,7 @@ function QueueTab() {
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div className="py-8 text-center text-sm text-slate-500 animate-pulse">Loading queue...</div>
+  if (loading) return <div className="space-y-4"><SkeletonCards count={2} /><SkeletonTable rows={3} /></div>
 
   const statusColor: Record<string, string> = {
     queued: 'bg-amber-400',
