@@ -96,6 +96,7 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
   const [notifications, setNotifications] = useState<any[]>([])
   const [notiOpen, setNotiOpen] = useState(false)
   const notiRef = useRef<HTMLDivElement>(null)
+  const [researchCount, setResearchCount] = useState(0)
 
   useEffect(() => {
     Promise.allSettled([
@@ -107,6 +108,11 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
       api.usage().then(r => setUsage(r)),
       api.challenges().then(r => setChallenges(Array.isArray(r) ? r : (r?.challenges || []))),
       api.signals(50).then(r => setSignalCount(r.count || r.signals?.length || 0)),
+      api.researchReports(50).then(r => {
+        const reports = r.reports || []
+        const today = new Date().toISOString().slice(0, 10)
+        setResearchCount(reports.filter((rp: any) => rp.created_at?.startsWith(today)).length)
+      }),
     ]).finally(() => setLoading(false))
 
     // Health checks for all services
@@ -409,7 +415,7 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
       </div>
 
       {/* Today's Activity Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-lg">
             📋
@@ -426,6 +432,15 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
           <div>
             <div className="text-2xl font-bold text-white">{signalCount}</div>
             <div className="text-xs text-slate-400">{h.signalsDetected}</div>
+          </div>
+        </div>
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-lg">
+            🔬
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-white">{researchCount}</div>
+            <div className="text-xs text-slate-400">{locale === 'ko' ? '오늘 리서치' : 'Research Today'}</div>
           </div>
         </div>
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4">
