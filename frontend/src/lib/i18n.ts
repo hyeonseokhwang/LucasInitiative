@@ -194,6 +194,10 @@ export interface Messages {
     workerReports: string
     signalsDetected: string
     quickLinks: string
+    commanderStatus: string
+    activeWorkers: string
+    recentDecisions: string
+    noDecisions: string
   }
 
   // Stocks tab
@@ -537,6 +541,10 @@ const ko: Messages = {
     workerReports: '워커 보고',
     signalsDetected: '감지된 시그널',
     quickLinks: '퀵 링크',
+    commanderStatus: 'Commander 상태',
+    activeWorkers: '활성 워커',
+    recentDecisions: '최근 판단 로그',
+    noDecisions: '판단 기록 없음',
   },
 
   stocks: {
@@ -874,6 +882,10 @@ const en: Messages = {
     workerReports: 'Worker Reports',
     signalsDetected: 'Signals Detected',
     quickLinks: 'Quick Links',
+    commanderStatus: 'Commander Status',
+    activeWorkers: 'Active Workers',
+    recentDecisions: 'Recent Decisions',
+    noDecisions: 'No decisions yet',
   },
 
   stocks: {

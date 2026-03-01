@@ -91,6 +91,8 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
   const [serviceStatus, setServiceStatus] = useState<Record<string, boolean>>({})
   const [todayReports, setTodayReports] = useState(0)
   const [signalCount, setSignalCount] = useState(0)
+  const [activeWorkers, setActiveWorkers] = useState(0)
+  const [recentReports, setRecentReports] = useState<any[]>([])
 
   useEffect(() => {
     Promise.allSettled([
@@ -116,6 +118,24 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
     fetch('http://localhost:9000/api/reports?today=true', { signal: AbortSignal.timeout(3000) })
       .then(r => r.json())
       .then(data => setTodayReports(data.count || data.reports?.length || 0))
+      .catch(() => {})
+
+    // Active workers from CC sessions
+    fetch('http://localhost:9000/api/sessions', { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(data => {
+        const sessions = Array.isArray(data) ? data : (data.sessions || [])
+        setActiveWorkers(sessions.filter((s: any) => s.status === 'running').length)
+      })
+      .catch(() => {})
+
+    // Recent 5 reports from CC
+    fetch('http://localhost:9000/api/reports', { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(data => {
+        const reports = Array.isArray(data) ? data : (data.reports || [])
+        setRecentReports(reports.slice(0, 5))
+      })
       .catch(() => {})
   }, [])
 
@@ -184,6 +204,66 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
               </div>
             )
           })}
+        </div>
+      </div>
+
+      {/* Commander Status + Recent Decisions */}
+      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-slate-300">{h.commanderStatus}</h3>
+            {serviceStatus['cc'] === undefined ? (
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-700/50 text-[10px] text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-slate-500 animate-pulse" />
+                ...
+              </span>
+            ) : serviceStatus['cc'] ? (
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+                {h.online}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] text-red-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.6)]" />
+                {h.offline}
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-blue-400 font-mono">{activeWorkers} {h.activeWorkers}</span>
+        </div>
+
+        {/* Recent 5 Decision Logs */}
+        <div>
+          <div className="text-xs text-slate-400 mb-2">{h.recentDecisions}</div>
+          {recentReports.length > 0 ? (
+            <div className="space-y-2">
+              {recentReports.map((rpt: any, i: number) => {
+                const ts = rpt.timestamp || rpt.created_at || ''
+                const timeStr = ts ? new Date(ts).toLocaleTimeString(locale === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : ''
+                const worker = rpt.worker || rpt.from || 'unknown'
+                const content = rpt.report || rpt.message || rpt.content || ''
+                const summary = content.length > 80 ? content.slice(0, 80) + '...' : content
+                return (
+                  <div key={i} className="flex items-start gap-3 px-3 py-2 rounded-lg bg-slate-700/20 border border-slate-700/40">
+                    <div className="shrink-0 mt-0.5">
+                      <span className={`inline-block w-2 h-2 rounded-full ${
+                        i === 0 ? 'bg-blue-400 shadow-[0_0_4px_rgba(96,165,250,0.5)]' : 'bg-slate-600'
+                      }`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-mono text-slate-500">{timeStr}</span>
+                        <span className="text-[10px] font-semibold text-blue-300 bg-blue-500/10 px-1.5 py-0.5 rounded">{worker}</span>
+                      </div>
+                      <div className="text-xs text-slate-300 leading-relaxed">{summary}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-xs text-slate-500 py-3 text-center">{h.noDecisions}</div>
+          )}
         </div>
       </div>
 
