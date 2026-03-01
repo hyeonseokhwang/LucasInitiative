@@ -11,6 +11,18 @@ interface DailyReport {
 }
 
 /** Lightweight markdown → HTML (headings, bold, italic, lists, hr, code blocks, tables, links) */
+function sanitizeHtml(html: string): string {
+  return html
+    // Remove script tags and content
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    // Remove on* event handlers (onclick, onerror, onload, etc.)
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // Remove javascript: protocol in href/src
+    .replace(/(href|src|action)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, '$1=""')
+    // Remove iframe, object, embed, form tags
+    .replace(/<\/?(?:iframe|object|embed|form|base|meta|link|style)[\s\S]*?>/gi, '')
+}
+
 function renderMarkdown(md: string): string {
   // First pass: extract code blocks and tables to protect from inline processing
   const codeBlocks: string[] = []
@@ -69,7 +81,7 @@ function renderMarkdown(md: string): string {
     processed = processed.replace(`%%CODEBLOCK_${i}%%`, block)
   })
 
-  return `<p class="text-sm text-slate-300 leading-relaxed mb-2">${processed}</p>`
+  return sanitizeHtml(`<p class="text-sm text-slate-300 leading-relaxed mb-2">${processed}</p>`)
 }
 
 export function DailyReportPanel() {
