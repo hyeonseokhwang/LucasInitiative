@@ -121,6 +121,8 @@ export interface ResearchReport {
   query?: string
   trigger_type?: string
   priority?: number
+  category?: string
+  bookmarked?: boolean | number
   created_at: string
 }
 
@@ -145,6 +147,7 @@ export interface ResearchTopic {
   priority: number
   status: string
   trigger_type: string
+  category?: string
   source_data?: string
   created_at: string
   completed_at?: string

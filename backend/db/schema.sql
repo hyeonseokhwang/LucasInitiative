@@ -179,6 +179,7 @@ CREATE TABLE IF NOT EXISTS research_topics (
     status      TEXT DEFAULT 'pending'
                 CHECK(status IN ('pending', 'researching', 'validating', 'completed', 'failed')),
     trigger_type TEXT DEFAULT 'auto',           -- auto, alert, manual
+    category    TEXT DEFAULT 'general',          -- stock, realestate, general
     source_data TEXT,                           -- JSON: triggering context
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at TEXT
@@ -211,6 +212,7 @@ CREATE TABLE IF NOT EXISTS research_reports (
     contradictions  INTEGER DEFAULT 0,          -- count of contradicting pairs
     evidence_count  INTEGER DEFAULT 0,
     model_used      TEXT,
+    bookmarked      INTEGER DEFAULT 0,          -- 0=normal, 1=bookmarked
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

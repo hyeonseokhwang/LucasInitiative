@@ -55,6 +55,27 @@ def _detect_direction(text: str) -> str:
     return "neutral"
 
 
+# Category keywords for auto-detection
+_STOCK_KEYWORDS = {"주식", "종목", "kospi", "kosdaq", "시장", "매수", "매도", "주가", "상장", "배당",
+                   "실적", "공시", "ETF", "etf", "반도체", "stock", "market", "s&p", "nasdaq", "nyse",
+                   "dow", "코스피", "코스닥", "강세", "약세", "급등", "급락", "거래량", "시가총액"}
+_REALESTATE_KEYWORDS = {"부동산", "아파트", "매매", "전세", "월세", "분양", "재건축", "재개발", "토지",
+                        "주택", "오피스텔", "상가", "임대", "청약", "입주", "건설", "housing", "apartment",
+                        "real estate", "property", "mortgage", "건축", "용적률"}
+
+
+def _detect_category(text: str) -> str:
+    """Auto-detect research category from title/query."""
+    t = text.lower()
+    stock_score = sum(1 for k in _STOCK_KEYWORDS if k in t)
+    re_score = sum(1 for k in _REALESTATE_KEYWORDS if k in t)
+    if re_score > stock_score and re_score >= 1:
+        return "realestate"
+    if stock_score >= 1:
+        return "stock"
+    return "general"
+
+
 async def _is_duplicate_topic(title: str, query: str) -> bool:
     """Check if a similar topic was already researched recently (within 6h)."""
     recent = await fetch_all(
@@ -606,10 +627,11 @@ async def _run_research(topic_data: dict) -> dict | None:
         return None
 
     try:
+        category = topic_data.get("category") or _detect_category(f"{title} {query}")
         topic_id = await execute(
-            """INSERT INTO research_topics (title, query, priority, status, trigger_type, source_data)
-               VALUES (?, ?, ?, 'researching', ?, ?)""",
-            (title, query, priority, trigger_type, source_data),
+            """INSERT INTO research_topics (title, query, priority, status, trigger_type, category, source_data)
+               VALUES (?, ?, ?, 'researching', ?, ?, ?)""",
+            (title, query, priority, trigger_type, category, source_data),
         )
 
         await agent_manager.update_status("research", "working", f"Researching: {title}")

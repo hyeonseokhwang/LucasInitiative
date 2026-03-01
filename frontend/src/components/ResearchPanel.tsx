@@ -68,10 +68,9 @@ const statusDot: Record<string, string> = {
 
 const RESEARCH_CATEGORIES = [
   { value: '', label: 'All' },
-  { value: 'real-estate', label: 'Real Estate' },
   { value: 'stock', label: 'Stock' },
+  { value: 'realestate', label: 'Real Estate' },
   { value: 'general', label: 'General' },
-  { value: 'tech', label: 'Tech' },
 ]
 
 function FilterBar({ filters, onChange }: {
@@ -248,7 +247,18 @@ function ReportItem({ report, isExpanded, onToggle, isBookmarked, onBookmarkTogg
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white truncate">{report.title}</div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-white truncate">{report.title}</span>
+            {report.category && report.category !== 'general' && (
+              <span className={`px-1.5 py-0.5 text-[10px] rounded border shrink-0 ${
+                report.category === 'stock' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                report.category === 'realestate' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                'bg-slate-500/10 text-slate-400 border-slate-500/20'
+              }`}>
+                {report.category === 'stock' ? 'Stock' : report.category === 'realestate' ? 'Real Estate' : report.category}
+              </span>
+            )}
+          </div>
           <div className="text-xs text-slate-400 mt-0.5 truncate">{report.summary}</div>
         </div>
 
@@ -413,6 +423,15 @@ function HistoryTimeline({ topics }: { topics: ResearchTopic[] }) {
           <div className="flex-1 min-w-0 pb-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-white truncate">{topic.title}</span>
+              {topic.category && topic.category !== 'general' && (
+                <span className={`px-1 py-0.5 text-[9px] rounded border shrink-0 ${
+                  topic.category === 'stock' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                  topic.category === 'realestate' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                  'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                }`}>
+                  {topic.category === 'stock' ? 'Stock' : topic.category === 'realestate' ? 'RE' : topic.category}
+                </span>
+              )}
               <span className={`text-[10px] ${statusColor[topic.status] || 'text-slate-500'}`}>
                 {topic.status}
               </span>
@@ -450,16 +469,9 @@ interface FilterState {
 
 const defaultFilters: FilterState = { keyword: '', dateFrom: '', dateTo: '', confMin: 0, confMax: 100, category: '', bookmarkedOnly: false }
 
-// Bookmark helpers (localStorage)
-const BOOKMARK_KEY = 'lucas-research-bookmarks'
-function loadBookmarks(): Set<number> {
-  try {
-    const raw = localStorage.getItem(BOOKMARK_KEY)
-    return raw ? new Set(JSON.parse(raw)) : new Set()
-  } catch { return new Set() }
-}
-function saveBookmarks(ids: Set<number>) {
-  localStorage.setItem(BOOKMARK_KEY, JSON.stringify([...ids]))
+// Bookmark helper: derive from report.bookmarked field (backend-driven)
+function getBookmarkedIds(reports: ResearchReport[]): Set<number> {
+  return new Set(reports.filter(r => r.bookmarked).map(r => r.id))
 }
 
 // --- Main Panel ---
@@ -474,15 +486,20 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const [showFilters, setShowFilters] = useState(false)
   const [activeTab, setActiveTab] = useState<'reports' | 'timeline' | 'bookmarks'>('reports')
-  const [bookmarks, setBookmarks] = useState<Set<number>>(() => loadBookmarks())
 
-  const toggleBookmark = (id: number) => {
-    setBookmarks(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
-      saveBookmarks(next)
-      return next
-    })
+  // Derive bookmarks from report data (backend-driven)
+  const bookmarks = useMemo(() => getBookmarkedIds(reports), [reports])
+
+  const toggleBookmark = async (id: number) => {
+    try {
+      const res = await fetchJson<{ id: number; bookmarked: boolean }>(
+        `/api/research/reports/${id}/bookmark`, { method: 'PUT' }
+      )
+      // Optimistic update: toggle bookmarked in local state
+      setReports(prev => prev.map(r =>
+        r.id === id ? { ...r, bookmarked: res.bookmarked ? 1 : 0 } : r
+      ))
+    } catch { /* ignore */ }
   }
 
   // Load data
@@ -528,18 +545,7 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
         const kw = filters.keyword.toLowerCase()
         if (!r.title.toLowerCase().includes(kw) && !r.summary.toLowerCase().includes(kw)) return false
       }
-      if (filters.category) {
-        const title = r.title.toLowerCase()
-        const summary = r.summary.toLowerCase()
-        const text = title + ' ' + summary
-        const catMatch: Record<string, () => boolean> = {
-          'real-estate': () => /부동산|아파트|매매|전세|월세|real.?estate|apartment|realestate/i.test(text),
-          'stock': () => /주식|종목|포트폴리오|stock|share|equity|nasdaq|kospi/i.test(text),
-          'tech': () => /기술|개발|프로그래밍|ai|ml|tech|software|framework|react|spring/i.test(text),
-          'general': () => true,
-        }
-        if (filters.category !== 'general' && catMatch[filters.category] && !catMatch[filters.category]()) return false
-      }
+      if (filters.category && r.category !== filters.category) return false
       if (filters.dateFrom) {
         if (new Date(r.created_at) < new Date(filters.dateFrom)) return false
       }
@@ -554,10 +560,10 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
     })
   }, [reports, filters, bookmarks])
 
-  // Bookmarked reports for dedicated tab
+  // Bookmarked reports for dedicated tab (backend-driven)
   const bookmarkedReports = useMemo(() => {
-    return reports.filter(r => bookmarks.has(r.id))
-  }, [reports, bookmarks])
+    return reports.filter(r => r.bookmarked)
+  }, [reports])
 
   const hasActiveFilters = filters.keyword || filters.dateFrom || filters.dateTo || filters.confMin > 0 || filters.confMax < 100 || filters.category || filters.bookmarkedOnly
 

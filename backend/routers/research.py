@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from services.db_service import fetch_all, fetch_one
+from services.db_service import execute, fetch_all, fetch_one
 from services.research_service import research_engine, queue_manual
 from services.signal_detector import scan_all_signals, get_recent_signals
 from services.vram_manager import vram_manager
@@ -12,40 +12,78 @@ router = APIRouter()
 @router.get("/topics")
 async def list_topics(
     status: str = None,
+    category: str = None,
     limit: int = Query(20, le=100),
 ):
-    """List research topics."""
+    """List research topics with optional status/category filter."""
+    conditions = []
+    params = []
     if status:
-        rows = await fetch_all(
-            "SELECT * FROM research_topics WHERE status = ? ORDER BY created_at DESC LIMIT ?",
-            (status, limit),
-        )
-    else:
-        rows = await fetch_all(
-            "SELECT * FROM research_topics ORDER BY created_at DESC LIMIT ?",
-            (limit,),
-        )
+        conditions.append("status = ?")
+        params.append(status)
+    if category and category != "all":
+        conditions.append("category = ?")
+        params.append(category)
+
+    where = ""
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
+
+    params.append(limit)
+    rows = await fetch_all(
+        f"SELECT * FROM research_topics {where} ORDER BY created_at DESC LIMIT ?",
+        tuple(params),
+    )
     return {"topics": rows}
 
 
 @router.get("/reports")
-async def list_reports(limit: int = Query(20, le=100)):
-    """List research reports."""
+async def list_reports(
+    limit: int = Query(20, le=100),
+    category: str = None,
+    bookmarked: bool = None,
+):
+    """List research reports with optional category/bookmark filter."""
+    conditions = []
+    params = []
+    if category and category != "all":
+        conditions.append("t.category = ?")
+        params.append(category)
+    if bookmarked:
+        conditions.append("r.bookmarked = 1")
+
+    where = ""
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
+
+    params.append(limit)
     rows = await fetch_all(
-        """SELECT r.*, t.query, t.trigger_type, t.priority
+        f"""SELECT r.*, t.query, t.trigger_type, t.priority, t.category
            FROM research_reports r
            JOIN research_topics t ON r.topic_id = t.id
+           {where}
            ORDER BY r.created_at DESC LIMIT ?""",
-        (limit,),
+        tuple(params),
     )
     return {"reports": rows}
+
+
+@router.put("/reports/{report_id}/bookmark")
+async def toggle_bookmark(report_id: int):
+    """Toggle bookmark status on a report."""
+    report = await fetch_one("SELECT bookmarked FROM research_reports WHERE id = ?", (report_id,))
+    if not report:
+        return {"error": "Report not found"}
+    new_val = 0 if report["bookmarked"] else 1
+    await execute("UPDATE research_reports SET bookmarked = ? WHERE id = ?", (new_val, report_id))
+    return {"id": report_id, "bookmarked": bool(new_val)}
 
 
 @router.get("/reports/{report_id}")
 async def get_report(report_id: int):
     """Get full report with evidence chain."""
     report = await fetch_one(
-        """SELECT r.*, t.query, t.trigger_type, t.priority, t.source_data
+        """SELECT r.*, t.query, t.trigger_type, t.priority, t.category, t.source_data
            FROM research_reports r
            JOIN research_topics t ON r.topic_id = t.id
            WHERE r.id = ?""",
