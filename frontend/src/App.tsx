@@ -27,6 +27,7 @@ import { ModelManagementPanel } from './components/ModelManagementPanel'
 import { LogViewer } from './components/LogViewer'
 import { InputHistoryPanel } from './components/InputHistoryPanel'
 import { SignalPanel } from './components/SignalPanel'
+import { TrendsPanel } from './components/TrendsPanel'
 import { DailyReportPanel } from './components/DailyReportPanel'
 import { SentimentPanel } from './components/SentimentPanel'
 import { DivisionPanel } from './components/DivisionPanel'
@@ -40,7 +41,7 @@ import { GridLayout } from './components/GridLayout'
 import { useLayoutSettings } from './hooks/useLayoutSettings'
 import { ToastProvider, useToast } from './components/ToastContainer'
 
-type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'inputhistory' | 'dailyreport' | 'sentiment' | 'divisions' | 'workers' | 'tokenusage' | 'llmactivity' | 'models' | 'logs' | 'settings'
+type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'trends' | 'inputhistory' | 'dailyreport' | 'sentiment' | 'divisions' | 'workers' | 'tokenusage' | 'llmactivity' | 'models' | 'logs' | 'settings'
 
 function AppInner() {
   const { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, collectorAlert, researchUpdate, researchComplete } = useWebSocket()
@@ -310,7 +311,7 @@ function AppInner() {
 
       {/* Navigation */}
       <nav className="bg-slate-800/40 border-b border-slate-700/30 px-4 flex gap-1 overflow-x-auto">
-        {(['home', 'divisions', 'workers', 'tokenusage', 'llmactivity', 'stocks', 'realestate', 'signals', 'sentiment', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
+        {(['home', 'divisions', 'workers', 'tokenusage', 'llmactivity', 'stocks', 'realestate', 'signals', 'trends', 'sentiment', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -423,6 +424,12 @@ function AppInner() {
         {layout.mode === 'focus' && view === 'signals' && (
           <PanelWrapper title="Signals" interval={60000} refreshTrigger={globalRefresh}>
             <SignalPanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'trends' && (
+          <PanelWrapper title="Trends" interval={60000} refreshTrigger={globalRefresh}>
+            <TrendsPanel />
           </PanelWrapper>
         )}
 

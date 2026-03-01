@@ -158,6 +158,20 @@ export const api = {
       limit: String(limit || 20),
     })}`),
 
+  // Trends (Worker-1 Phase 3)
+  trendsKeywords: () =>
+    fetchJson<{ trends: any[]; daily: any }>('/api/trends/keywords'),
+  trendsCategories: () =>
+    fetchJson<{ category_trends: any[] }>('/api/trends/categories'),
+  trendsInsights: () =>
+    fetchJson<{ insights: any[] }>('/api/trends/insights/weekly'),
+  trendsPipeline: () =>
+    fetchJson<any>('/api/trends/pipeline/stats'),
+  trendsNews: (category?: string) =>
+    fetchJson<{ items: any[]; count: number }>(`/api/trends/sources/news${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+  trendsQueue: () =>
+    fetchJson<{ queued: any[]; processing: any; completed: any[]; queue_size: number; is_processing: boolean }>('/api/trends/queue'),
+
   // Challenges (direct call to Scheduler at :7778)
   challenges: () =>
     fetch('http://localhost:7778/api/challenges', { headers: { 'Content-Type': 'application/json' } })

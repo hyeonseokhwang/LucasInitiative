@@ -38,6 +38,7 @@ export interface Messages {
     reports: string
     research: string
     signals: string
+    trends: string
     inputhistory: string
     dailyreport: string
     sentiment: string
@@ -398,6 +399,7 @@ const ko: Messages = {
     reports: '리포트',
     research: '리서치',
     signals: '시그널',
+    trends: '트렌드',
     inputhistory: '입력내역',
     dailyreport: '일일리포트',
     sentiment: '감성분석',
@@ -746,6 +748,7 @@ const en: Messages = {
     reports: 'Reports',
     research: 'Research',
     signals: 'Signals',
+    trends: 'Trends',
     inputhistory: 'History',
     dailyreport: 'Daily Report',
     sentiment: 'Sentiment',

@@ -153,6 +153,104 @@ export interface ResearchTopic {
   completed_at?: string
 }
 
+export interface ResearchQualityMetrics {
+  report_id: number
+  source_count: number
+  unique_sources: number
+  web_sources: number
+  db_sources: number
+  verified_count: number
+  duplicate_rate: number
+  avg_confidence: number
+  min_confidence: number
+  max_confidence: number
+  source_diversity: number
+  freshness_hours: number
+  quality_score: number
+}
+
+export interface ResearchScheduleItem {
+  id: number
+  keyword: string
+  category: string
+  frequency: string
+  enabled: number
+  last_run?: string
+  created_at: string
+}
+
+export interface ResearchKeywordAlert {
+  id: number
+  keyword: string
+  category: string
+  enabled: number
+  created_at: string
+}
+
+// Trends API types
+export interface KeywordTrend {
+  keyword: string
+  total: number
+  first_half: number
+  second_half: number
+  direction: 'rising' | 'falling' | 'stable'
+}
+
+export interface CategoryTrend {
+  date: string
+  stock: number
+  realestate: number
+  general: number
+}
+
+export interface WeeklyInsight {
+  id: number
+  title: string
+  content: string
+  data_json?: string
+  created_at: string
+}
+
+export interface PipelineStats {
+  session: {
+    total_processed: number
+    success_count: number
+    error_count: number
+    avg_processing_ms: number
+    uptime_seconds: number
+  }
+  historical: {
+    total_items: number
+    avg_per_day: number
+    peak_day: string
+    peak_count: number
+  }
+  stage_performance: Record<string, { avg_ms: number; count: number; error_rate: number }>
+  recent_errors: { message: string; stage: string; timestamp: string }[]
+}
+
+export interface NewsItem {
+  id: number
+  title: string
+  url?: string
+  source: string
+  category: string
+  summary?: string
+  published_at: string
+  created_at: string
+}
+
+export interface QueueItem {
+  id: number
+  query: string
+  priority: number
+  status: 'queued' | 'processing' | 'completed' | 'failed'
+  category?: string
+  created_at: string
+  started_at?: string
+  completed_at?: string
+}
+
 export type WsMessage =
   | { type: 'metrics'; data: SystemSnapshot }
   | { type: 'chat_token'; data: { conversation_id: number; token: string; done: boolean } }
