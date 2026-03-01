@@ -10,6 +10,7 @@ export function useWebSocket() {
   const [agentUpdate, setAgentUpdate] = useState<any>(null)
   const [researchUpdate, setResearchUpdate] = useState<any>(null)
   const [researchComplete, setResearchComplete] = useState<any>(null)
+  const [collectorAlert, setCollectorAlert] = useState<any>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const retryRef = useRef(0)
 
@@ -41,6 +42,9 @@ export function useWebSocket() {
           case 'agent_update':
             setAgentUpdate(msg.data)
             break
+          case 'collector_alert':
+            setCollectorAlert(msg.data)
+            break
           case 'research_update':
             setResearchUpdate(msg.data)
             break
@@ -67,5 +71,5 @@ export function useWebSocket() {
     return () => wsRef.current?.close()
   }, [connect])
 
-  return { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, researchUpdate, researchComplete }
+  return { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, collectorAlert, researchUpdate, researchComplete }
 }

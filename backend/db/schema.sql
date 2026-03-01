@@ -120,6 +120,20 @@ CREATE TABLE IF NOT EXISTS realestate_data (
     recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Real estate watchlist
+CREATE TABLE IF NOT EXISTS realestate_watchlist (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    district    TEXT NOT NULL,               -- 구
+    dong        TEXT,                        -- 동
+    apt_name    TEXT,                        -- 아파트명
+    deal_type   TEXT DEFAULT 'sale',         -- sale, jeonse, monthly
+    memo        TEXT,
+    target_price INTEGER,                   -- 관심 가격 (만원)
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_watchlist_district ON realestate_watchlist(district);
+
 -- Scheduled jobs
 CREATE TABLE IF NOT EXISTS scheduled_jobs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,6 +224,20 @@ CREATE TABLE IF NOT EXISTS source_reliability (
     last_updated    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Portfolio holdings
+CREATE TABLE IF NOT EXISTS portfolio (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    quantity    REAL NOT NULL DEFAULT 0,
+    avg_price   REAL NOT NULL DEFAULT 0,
+    sector      TEXT DEFAULT '기타',
+    market      TEXT DEFAULT 'US',
+    added_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_portfolio_symbol ON portfolio(symbol);
+
 -- Telegram subscribers
 CREATE TABLE IF NOT EXISTS telegram_config (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -220,6 +248,20 @@ CREATE TABLE IF NOT EXISTS telegram_config (
     daily_enabled   INTEGER DEFAULT 1,
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    type        TEXT NOT NULL DEFAULT 'info',       -- info, alert, warning, error, research, stock
+    title       TEXT NOT NULL,
+    message     TEXT,
+    read        INTEGER DEFAULT 0,                  -- 0=unread, 1=read
+    metadata    TEXT,                                -- JSON for extra data
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read, created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_collected_hash ON collected_items(content_hash);

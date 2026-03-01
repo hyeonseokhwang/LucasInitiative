@@ -12,7 +12,7 @@ PORT = 7777
 
 # Ollama
 OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "deepseek-r1:8b"
+DEFAULT_MODEL = "qwen2.5:14b"
 
 # Monitoring
 METRICS_POLL_INTERVAL = 3       # seconds (WebSocket push)
@@ -33,7 +33,8 @@ API_HAIKU_PRIORITY = True        # 분류/필터는 Haiku(저렴), 심층 분석
 
 # Model display config
 MODEL_CONFIGS = {
-    "deepseek-r1:8b": {"label": "DeepSeek R1 8B", "category": "reasoning", "recommended": True},
+    "qwen2.5:14b": {"label": "Qwen 2.5 14B", "category": "general", "recommended": True},
+    "deepseek-r1:8b": {"label": "DeepSeek R1 8B", "category": "reasoning"},
     "qwen2.5-coder:7b": {"label": "Qwen 2.5 Coder 7B", "category": "code", "recommended": True},
     "gemma2:2b": {"label": "Gemma 2 2B", "category": "general", "note": "Fast, lower quality"},
     "llama3.2:1b": {"label": "Llama 3.2 1B", "category": "general", "note": "Fastest"},

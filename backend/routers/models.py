@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from services.ollama_service import list_models, get_running_models
+from services.ollama_service import list_models, get_running_models, warmup_model, show_model
 from config import MODEL_CONFIGS
 
 router = APIRouter()
@@ -34,3 +34,23 @@ async def get_running():
         return {"models": models}
     except Exception as e:
         return {"models": [], "error": str(e)}
+
+
+@router.post("/warmup/{model_name:path}")
+async def warmup(model_name: str):
+    """Load a model into VRAM (warmup)."""
+    try:
+        result = await warmup_model(model_name)
+        return {"status": "ok", "model": model_name, "response": result}
+    except Exception as e:
+        return {"status": "error", "model": model_name, "error": str(e)}
+
+
+@router.get("/info/{model_name:path}")
+async def model_info(model_name: str):
+    """Get detailed model info (parameters, template, etc.)."""
+    try:
+        info = await show_model(model_name)
+        return {"model": model_name, "info": info}
+    except Exception as e:
+        return {"model": model_name, "info": {}, "error": str(e)}

@@ -16,6 +16,26 @@ async def get_running_models() -> list[dict]:
         return resp.json().get("models", [])
 
 
+async def warmup_model(model: str) -> dict:
+    """Load a model into VRAM by sending a minimal generate request."""
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            json={"model": model, "prompt": "", "stream": False},
+        )
+        return resp.json()
+
+
+async def show_model(model: str) -> dict:
+    """Get model info (parameters, template, etc.)."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(
+            f"{OLLAMA_BASE_URL}/api/show",
+            json={"name": model},
+        )
+        return resp.json()
+
+
 async def chat_stream(
     model: str, messages: list[dict]
 ) -> AsyncGenerator[dict, None]:

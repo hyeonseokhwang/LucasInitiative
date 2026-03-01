@@ -703,6 +703,13 @@ async def _run_research(topic_data: dict) -> dict | None:
             },
         })
 
+        # Save to notifications table
+        try:
+            from services.notification_service import notify_research_complete
+            await notify_research_complete(topic_id, title, validation["avg_confidence"], len(evidence))
+        except Exception as e:
+            print(f"[Research] Notification error: {e}")
+
         return {
             "topic_id": topic_id,
             "report_id": report_id,

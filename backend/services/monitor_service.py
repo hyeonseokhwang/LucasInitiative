@@ -2,9 +2,11 @@ import psutil
 import subprocess
 import asyncio
 import json
+import os
 import httpx
 from datetime import datetime
-from config import OLLAMA_BASE_URL, METRICS_POLL_INTERVAL, METRICS_SAVE_INTERVAL
+from pathlib import Path
+from config import OLLAMA_BASE_URL, METRICS_POLL_INTERVAL, METRICS_SAVE_INTERVAL, BASE_DIR
 
 
 class MonitorService:
@@ -113,6 +115,117 @@ class MonitorService:
                 print(f"[Monitor] Error: {e}")
 
             await asyncio.sleep(METRICS_POLL_INTERVAL)
+
+    def get_gpu_processes(self) -> list[dict]:
+        """Get per-process GPU memory usage via nvidia-smi."""
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-compute-apps=pid,used_memory,name",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5,
+            )
+            procs = []
+            for line in result.stdout.strip().split("\n"):
+                if not line.strip():
+                    continue
+                parts = [x.strip() for x in line.split(",")]
+                if len(parts) >= 3:
+                    procs.append({
+                        "pid": int(parts[0]),
+                        "gpu_mem_mb": int(parts[1]),
+                        "name": parts[2].split("\\")[-1].split("/")[-1],
+                    })
+            return procs
+        except Exception:
+            return []
+
+    def get_top_processes(self, limit: int = 15) -> list[dict]:
+        """Get top processes by memory usage, with CPU percent."""
+        target_names = {"ollama", "python", "python3", "pythonw", "node", "uvicorn", "gunicorn"}
+        procs: list[dict] = []
+        for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_info", "memory_percent"]):
+            try:
+                info = p.info
+                name_lower = (info["name"] or "").lower().replace(".exe", "")
+                mem_info = info.get("memory_info")
+                mem_mb = round(mem_info.rss / (1024 ** 2), 1) if mem_info else 0
+                procs.append({
+                    "pid": info["pid"],
+                    "name": info["name"] or "unknown",
+                    "cpu_percent": round(info.get("cpu_percent") or 0, 1),
+                    "mem_mb": mem_mb,
+                    "mem_percent": round(info.get("memory_percent") or 0, 1),
+                    "is_key": name_lower in target_names,
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        # Sort: key processes first, then by mem descending
+        procs.sort(key=lambda x: (not x["is_key"], -x["mem_mb"]))
+        return procs[:limit]
+
+    def get_disk_detail(self) -> dict:
+        """Get disk usage for key paths."""
+        paths_to_check = {
+            "ollama_models": os.environ.get("OLLAMA_MODELS", os.path.expanduser("~/.ollama/models")),
+            "database": str(BASE_DIR / "db"),
+            "frontend_dist": str(BASE_DIR.parent / "frontend" / "dist"),
+        }
+        result = {}
+        for key, path in paths_to_check.items():
+            try:
+                total_size = 0
+                p = Path(path)
+                if p.exists():
+                    if p.is_file():
+                        total_size = p.stat().st_size
+                    else:
+                        for f in p.rglob("*"):
+                            if f.is_file():
+                                total_size += f.stat().st_size
+                result[key] = {
+                    "path": path,
+                    "size_mb": round(total_size / (1024 ** 2), 1),
+                    "size_gb": round(total_size / (1024 ** 3), 2),
+                    "exists": p.exists(),
+                }
+            except Exception:
+                result[key] = {"path": path, "size_mb": 0, "size_gb": 0, "exists": False}
+
+        # Drive-level info
+        for drive in ["C:\\", "E:\\", "G:\\"]:
+            try:
+                usage = psutil.disk_usage(drive)
+                result[f"drive_{drive[0].lower()}"] = {
+                    "path": drive,
+                    "used_gb": round(usage.used / (1024 ** 3), 1),
+                    "total_gb": round(usage.total / (1024 ** 3), 1),
+                    "free_gb": round(usage.free / (1024 ** 3), 1),
+                    "percent": round(usage.percent, 1),
+                }
+            except Exception:
+                pass
+        return result
+
+    async def get_ollama_model_vram(self) -> list[dict]:
+        """Get VRAM usage per loaded Ollama model via /api/ps."""
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"{OLLAMA_BASE_URL}/api/ps")
+                models = resp.json().get("models", [])
+                result = []
+                for m in models:
+                    size_vram = m.get("size_vram", 0)
+                    size = m.get("size", 0)
+                    result.append({
+                        "name": m.get("name", "unknown"),
+                        "size_vram_mb": round(size_vram / (1024 ** 2), 1) if size_vram else 0,
+                        "size_total_mb": round(size / (1024 ** 2), 1) if size else 0,
+                        "digest": m.get("digest", "")[:12],
+                        "expires_at": m.get("expires_at", ""),
+                    })
+                return result
+        except Exception:
+            return []
 
     async def _save_to_db(self, snapshot: dict):
         from services.db_service import execute

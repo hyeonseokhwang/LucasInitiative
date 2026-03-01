@@ -67,13 +67,15 @@ async def collect_stock_prices():
             symbol = item.get("symbol", "")
             name = item.get("name", symbol)
 
-            # Save to market_data
+            # Save to market_data (including OHLCV)
             await execute(
-                """INSERT INTO market_data (symbol, name, market, price, change_pct, prev_close, market_cap)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO market_data (symbol, name, market, price, change_pct, prev_close, market_cap, open_price, high, low, volume)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (symbol, name, item.get("market", item.get("region", "")),
                  item.get("price", 0), item.get("change_pct", 0),
-                 item.get("prev_close", 0), item.get("market_cap", 0)),
+                 item.get("prev_close", 0), item.get("market_cap", 0),
+                 item.get("open_price", 0), item.get("high", 0),
+                 item.get("low", 0), item.get("volume", 0)),
             )
 
             # Opportunity detection: flag big movers (±3%)
@@ -89,6 +91,12 @@ async def collect_stock_prices():
                 "type": "collector_alert",
                 "data": {"category": "stock", "message": alert_text, "count": len(alerts)},
             })
+            # Save to notifications table
+            try:
+                from services.notification_service import check_stock_alerts
+                await check_stock_alerts(all_data, threshold=3.0)
+            except Exception as e:
+                print(f"[Collector] Notification error: {e}")
             # Trigger ONE combined research for all alerts (not per-alert)
             try:
                 from services.research_service import queue_alert

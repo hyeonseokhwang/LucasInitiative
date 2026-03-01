@@ -11,11 +11,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from config import HOST, PORT, STATIC_DIR
-from routers import chat, models, monitor, tasks, schedule, expense, usage, reports, agents
+from routers import chat, models, monitor, tasks, schedule, expense, usage, reports, agents, realestate, notifications, logs, export
 from routers import research as research_router
 from ws.handler import router as ws_router, manager as ws_manager
 from services.db_service import init_db, close_db
 from services.monitor_service import monitor as monitor_svc
+from services.log_service import log_service
 from services.task_service import task_manager
 from services.scheduler_service import scheduler
 from services.report_service import generate_daily_report
@@ -26,7 +27,8 @@ from services import telegram_service
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # Startup — set up log capture first
+    log_service.setup()
     print("[Lucas AI] Initializing database...")
     await init_db()
 
@@ -86,7 +88,11 @@ app.include_router(expense.router, prefix="/api/expenses", tags=["expenses"])
 app.include_router(usage.router, prefix="/api/usage", tags=["usage"])
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
+app.include_router(realestate.router, prefix="/api/realestate", tags=["realestate"])
 app.include_router(research_router.router, prefix="/api/research", tags=["research"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
+app.include_router(export.router, prefix="/api/export", tags=["export"])
 
 # WebSocket
 app.include_router(ws_router)
