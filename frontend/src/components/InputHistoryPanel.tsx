@@ -88,6 +88,7 @@ export function InputHistoryPanel() {
   const [typeFilter, setTypeFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [dateFilter, setDateFilter] = useState<string>('')
+  const [workerFilter, setWorkerFilter] = useState<string>('')
 
   // Detail view
   const [selectedEntry, setSelectedEntry] = useState<InputDetail | null>(null)
@@ -109,6 +110,7 @@ export function InputHistoryPanel() {
       if (typeFilter) params.set('type', typeFilter)
       if (statusFilter) params.set('status', statusFilter)
       if (dateFilter) params.set('date', dateFilter)
+      if (workerFilter) params.set('worker', workerFilter)
 
       const data = await fetchJson<{ entries: InputEntry[]; total: number; has_more: boolean }>(
         `/api/inputhistory?${params}`
@@ -126,7 +128,7 @@ export function InputHistoryPanel() {
     } finally {
       setLoading(false)
     }
-  }, [search, typeFilter, statusFilter, dateFilter])
+  }, [search, typeFilter, statusFilter, dateFilter, workerFilter])
 
   const loadStats = useCallback(async () => {
     try {
@@ -160,7 +162,27 @@ export function InputHistoryPanel() {
     setTypeFilter('')
     setStatusFilter('')
     setDateFilter('')
+    setWorkerFilter('')
   }
+
+  // Quick date helpers
+  const setQuickDate = (range: 'today' | 'week' | 'month') => {
+    const now = new Date()
+    if (range === 'today') {
+      setDateFilter(now.toISOString().slice(0, 10))
+    } else if (range === 'week') {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 7)
+      setDateFilter(d.toISOString().slice(0, 10))
+    } else {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 30)
+      setDateFilter(d.toISOString().slice(0, 10))
+    }
+  }
+
+  // Extract unique workers from entries
+  const uniqueWorkers = [...new Set(entries.map(e => e.worker).filter(Boolean))].sort()
 
   return (
     <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50">
@@ -246,6 +268,19 @@ export function InputHistoryPanel() {
               <option value="blocked">{isKo ? '블록' : 'Blocked'}</option>
             </select>
 
+            {/* Worker filter */}
+            <select
+              value={workerFilter}
+              onChange={e => setWorkerFilter(e.target.value)}
+              className="px-2 py-1.5 text-xs bg-slate-900/50 border border-slate-600/50 rounded-md text-slate-300
+                focus:outline-none focus:border-blue-500/50"
+            >
+              <option value="">{isKo ? '워커 전체' : 'All Workers'}</option>
+              {uniqueWorkers.map(w => (
+                <option key={w} value={w}>{w}</option>
+              ))}
+            </select>
+
             {/* Date filter */}
             <input
               type="date"
@@ -255,8 +290,25 @@ export function InputHistoryPanel() {
                 focus:outline-none focus:border-blue-500/50"
             />
 
+            {/* Quick date buttons */}
+            <div className="flex gap-1">
+              {[
+                { key: 'today' as const, ko: '오늘', en: 'Today' },
+                { key: 'week' as const, ko: '7일', en: '7d' },
+                { key: 'month' as const, ko: '30일', en: '30d' },
+              ].map(q => (
+                <button
+                  key={q.key}
+                  onClick={() => setQuickDate(q.key)}
+                  className="px-2 py-1.5 text-[10px] text-slate-400 hover:text-white bg-slate-700/30 hover:bg-slate-700/60 rounded-md transition-colors"
+                >
+                  {isKo ? q.ko : q.en}
+                </button>
+              ))}
+            </div>
+
             {/* Clear */}
-            {(search || typeFilter || statusFilter || dateFilter) && (
+            {(search || typeFilter || statusFilter || dateFilter || workerFilter) && (
               <button
                 onClick={clearFilters}
                 className="px-2 py-1.5 text-xs text-slate-400 hover:text-white transition-colors"
