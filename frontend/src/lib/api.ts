@@ -136,6 +136,22 @@ export const api = {
     fetchJson<any>(`/api/research/trigger?${new URLSearchParams({ query })}`, { method: 'POST' }),
   researchStatus: () =>
     fetchJson<{ engine: any }>('/api/research/status'),
+
+  // Signals
+  signals: (limit?: number) =>
+    fetchJson<{ signals: any[]; count: number }>(`/api/research/signals?limit=${limit || 50}`),
+  signalScan: () =>
+    fetchJson<{ status: string; signals: any[]; count: number }>('/api/research/signals/scan', { method: 'POST' }),
+
+  // Daily Reports (from daily_reports table)
+  dailyReports: (limit?: number) =>
+    fetchJson<{ reports: any[] }>(`/api/reports/history?limit=${limit || 30}`),
+
+  // Challenges (direct call to Scheduler at :7778)
+  challenges: () =>
+    fetch('http://localhost:7778/api/challenges', { headers: { 'Content-Type': 'application/json' } })
+      .then(r => r.json())
+      .catch(() => []),
 }
 
 /** Download a file from an export endpoint as a Blob */

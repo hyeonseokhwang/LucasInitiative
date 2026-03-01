@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   createChart, CandlestickSeries, HistogramSeries, LineSeries,
 } from 'lightweight-charts'
 import type { IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time } from 'lightweight-charts'
 import { api, downloadExport } from '../lib/api'
 import { ACCENT, CANDLE, lwcLayout, lwcGrid, lwcScaleBorder } from '../lib/chartTheme'
+import { useLocale } from '../hooks/useLocale'
+import { SignalBadges } from './SignalPanel'
 
 interface StockItem {
   symbol: string
@@ -376,30 +378,102 @@ function StockChart({ symbol }: { symbol: string }) {
 }
 
 export function StockPanel() {
+  const { t } = useLocale()
+  const s = t.stocks
+
   const [stocks, setStocks] = useState<StockItem[]>([])
   const [indices, setIndices] = useState<IndexItem[]>([])
   const [selected, setSelected] = useState<StockItem | null>(null)
   const [filter, setFilter] = useState<'all' | 'kr' | 'us'>('all')
+  const [search, setSearch] = useState('')
+  const [sectorFilter, setSectorFilter] = useState('')
+  const [signalList, setSignalList] = useState<any[]>([])
 
   useEffect(() => {
     api.stocks(filter).then(d => setStocks(d.stocks || []))
     api.indices().then(d => setIndices(d.indices || []))
+    api.signals(100).then(d => setSignalList(d.signals || [])).catch(() => {})
   }, [filter])
+
+  // Extract unique sectors from stock data
+  const sectors = useMemo(() => {
+    const set = new Set<string>()
+    stocks.forEach(st => { if (st.sector) set.add(st.sector) })
+    return Array.from(set).sort()
+  }, [stocks])
+
+  // Filter stocks by search and sector
+  const filteredStocks = useMemo(() => {
+    return stocks.filter(st => {
+      if ('error' in st) return false
+      if (sectorFilter && st.sector !== sectorFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        const nameMatch = st.name.toLowerCase().includes(q)
+        const symbolMatch = st.symbol.toLowerCase().replace('.ks', '').replace('.kq', '').includes(q)
+        if (!nameMatch && !symbolMatch) return false
+      }
+      return true
+    })
+  }, [stocks, search, sectorFilter])
+
+  // Group stocks by sector for display
+  const groupedBySector = useMemo(() => {
+    if (!sectorFilter && !search) return null // show flat list when no filtering
+    const map = new Map<string, StockItem[]>()
+    filteredStocks.forEach(st => {
+      const key = st.sector || 'Other'
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(st)
+    })
+    return map
+  }, [filteredStocks, sectorFilter, search])
 
   const changeCls = (pct: number) => pct > 0 ? 'text-red-400' : pct < 0 ? 'text-blue-400' : 'text-slate-400'
   const changePrefix = (pct: number) => pct > 0 ? '+' : ''
+
+  const renderStockRow = (st: StockItem) => (
+    <tr key={st.symbol} onClick={() => setSelected(st)}
+      className="border-b border-slate-700/20 hover:bg-slate-700/30 cursor-pointer transition">
+      <td className="px-4 py-2.5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-white font-medium">{st.name}</span>
+          <SignalBadges symbol={st.symbol} signals={signalList} />
+        </div>
+        <div className="text-xs text-slate-500">
+          {st.symbol.replace('.KS', '').replace('.KQ', '')} · {st.market}
+          {st.sector && <span className="ml-1 text-slate-600">· {st.sector}</span>}
+        </div>
+      </td>
+      <td className="text-right px-2 py-2.5 text-white font-medium">
+        {formatPrice(st.price, st.market)}
+      </td>
+      <td className={`text-right px-2 py-2.5 font-medium ${changeCls(st.change_pct)}`}>
+        {changePrefix(st.change_pct)}{st.change_pct}%
+      </td>
+      <td className="text-right px-2 py-2.5 text-slate-400 hidden md:table-cell">
+        {st.volume.toLocaleString()}
+      </td>
+      <td className="text-right px-4 py-2.5 text-slate-400 hidden lg:table-cell">
+        {formatCap(st.market_cap)}
+      </td>
+    </tr>
+  )
 
   if (selected) {
     return (
       <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-700/50">
           <button onClick={() => setSelected(null)} className="text-xs text-slate-400 hover:text-white mb-2 flex items-center gap-1">
-            &lt; Back
+            &lt; {s.back}
           </button>
           <div className="flex items-center gap-3">
             <h2 className="text-white font-medium text-lg">{selected.name}</h2>
             <span className="text-xs text-slate-500">{selected.symbol}</span>
             <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">{selected.market}</span>
+            {selected.sector && (
+              <span className="text-xs px-2 py-0.5 rounded bg-slate-700/60 text-slate-400">{selected.sector}</span>
+            )}
           </div>
           <div className="flex items-center gap-4 mt-1">
             <span className="text-2xl font-bold text-white">{formatPrice(selected.price, selected.market)}</span>
@@ -408,11 +482,11 @@ export function StockPanel() {
             </span>
           </div>
           <div className="flex gap-4 mt-2 text-xs text-slate-400">
-            <span>Open: {selected.open_price.toLocaleString()}</span>
-            <span>High: {selected.high.toLocaleString()}</span>
-            <span>Low: {selected.low.toLocaleString()}</span>
-            <span>Vol: {selected.volume.toLocaleString()}</span>
-            <span>Cap: {formatCap(selected.market_cap)}</span>
+            <span>{s.open}: {selected.open_price.toLocaleString()}</span>
+            <span>{s.high}: {selected.high.toLocaleString()}</span>
+            <span>{s.low}: {selected.low.toLocaleString()}</span>
+            <span>{s.volume}: {selected.volume.toLocaleString()}</span>
+            <span>{s.marketCap}: {formatCap(selected.market_cap)}</span>
           </div>
         </div>
         <div className="flex-1 p-4 overflow-y-auto">
@@ -426,13 +500,13 @@ export function StockPanel() {
     <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-700/50">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white font-medium">Stocks</h2>
+          <h2 className="text-white font-medium">{s.title}</h2>
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               {(['all', 'kr', 'us'] as const).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
                   className={`px-2 py-1 text-xs rounded ${filter === f ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}>
-                  {f.toUpperCase()}
+                  {f === 'all' ? s.allMarkets : f.toUpperCase()}
                 </button>
               ))}
             </div>
@@ -441,6 +515,34 @@ export function StockPanel() {
               CSV
             </button>
           </div>
+        </div>
+
+        {/* Search + Sector Filter */}
+        <div className="flex gap-2 mb-3 flex-wrap">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={s.searchPlaceholder}
+            className="flex-1 min-w-[180px] px-3 py-1.5 text-xs bg-slate-900/50 border border-slate-600/50 rounded-md
+              text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+          />
+          <select
+            value={sectorFilter}
+            onChange={e => setSectorFilter(e.target.value)}
+            className="px-2 py-1.5 text-xs bg-slate-900/50 border border-slate-600/50 rounded-md text-slate-300
+              focus:outline-none focus:border-blue-500/50"
+          >
+            <option value="">{s.allSectors}</option>
+            {sectors.map(sec => (
+              <option key={sec} value={sec}>{sec}</option>
+            ))}
+          </select>
+          {(search || sectorFilter) && (
+            <span className="text-xs text-slate-500 self-center">
+              {filteredStocks.length}/{stocks.length}
+            </span>
+          )}
         </div>
 
         {/* Market Indices */}
@@ -461,35 +563,37 @@ export function StockPanel() {
         <table className="w-full text-sm">
           <thead className="text-xs text-slate-500 border-b border-slate-700/30 sticky top-0 bg-slate-800/90">
             <tr>
-              <th className="text-left px-4 py-2">Name</th>
-              <th className="text-right px-2 py-2">Price</th>
-              <th className="text-right px-2 py-2">Change</th>
-              <th className="text-right px-2 py-2 hidden md:table-cell">Volume</th>
-              <th className="text-right px-4 py-2 hidden lg:table-cell">Market Cap</th>
+              <th className="text-left px-4 py-2">{s.name}</th>
+              <th className="text-right px-2 py-2">{s.price}</th>
+              <th className="text-right px-2 py-2">{s.change}</th>
+              <th className="text-right px-2 py-2 hidden md:table-cell">{s.volume}</th>
+              <th className="text-right px-4 py-2 hidden lg:table-cell">{s.marketCap}</th>
             </tr>
           </thead>
           <tbody>
-            {stocks.filter(s => !('error' in s)).map(s => (
-              <tr key={s.symbol} onClick={() => setSelected(s)}
-                className="border-b border-slate-700/20 hover:bg-slate-700/30 cursor-pointer transition">
-                <td className="px-4 py-2.5">
-                  <div className="text-white font-medium">{s.name}</div>
-                  <div className="text-xs text-slate-500">{s.symbol.replace('.KS', '').replace('.KQ', '')} · {s.market}</div>
-                </td>
-                <td className="text-right px-2 py-2.5 text-white font-medium">
-                  {formatPrice(s.price, s.market)}
-                </td>
-                <td className={`text-right px-2 py-2.5 font-medium ${changeCls(s.change_pct)}`}>
-                  {changePrefix(s.change_pct)}{s.change_pct}%
-                </td>
-                <td className="text-right px-2 py-2.5 text-slate-400 hidden md:table-cell">
-                  {s.volume.toLocaleString()}
-                </td>
-                <td className="text-right px-4 py-2.5 text-slate-400 hidden lg:table-cell">
-                  {formatCap(s.market_cap)}
+            {groupedBySector ? (
+              // Grouped display when filtering
+              Array.from(groupedBySector.entries()).map(([sector, items]) => (
+                <>{/* Sector header row */}
+                  <tr key={`sector-${sector}`}>
+                    <td colSpan={5} className="px-4 py-1.5 text-xs font-semibold text-slate-400 bg-slate-800/60 border-b border-slate-700/30">
+                      {sector} <span className="font-normal text-slate-500">({items.length})</span>
+                    </td>
+                  </tr>
+                  {items.map(renderStockRow)}
+                </>
+              ))
+            ) : (
+              // Flat list (default, no filtering)
+              filteredStocks.map(renderStockRow)
+            )}
+            {filteredStocks.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-sm">
+                  {s.noData}
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

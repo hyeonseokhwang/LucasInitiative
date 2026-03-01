@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from config import HOST, PORT, STATIC_DIR
-from routers import chat, models, monitor, tasks, schedule, expense, usage, reports, agents, realestate, notifications, logs, export
+from routers import chat, models, monitor, tasks, schedule, expense, usage, reports, agents, realestate, notifications, logs, export, inputhistory
 from routers import research as research_router
 from ws.handler import router as ws_router, manager as ws_manager
 from services.db_service import init_db, close_db
@@ -93,6 +93,7 @@ app.include_router(research_router.router, prefix="/api/research", tags=["resear
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
+app.include_router(inputhistory.router, prefix="/api/inputhistory", tags=["inputhistory"])
 
 # WebSocket
 app.include_router(ws_router)

@@ -59,12 +59,14 @@ function SectionCard({
 export function HomeOverview({ metrics, onNavigate }: Props) {
   const { locale, t } = useLocale()
   const h = t.home
+  const c = t.challenge
   const [indices, setIndices] = useState<any[]>([])
   const [portfolio, setPortfolio] = useState<any>(null)
   const [watchlist, setWatchlist] = useState<any[]>([])
   const [recentDeals, setRecentDeals] = useState<any[]>([])
   const [research, setResearch] = useState<any[]>([])
   const [usage, setUsage] = useState<any>(null)
+  const [challenges, setChallenges] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
       api.reDeals(undefined, undefined, 3).then(r => setRecentDeals(r.deals || [])),
       api.researchReports(3).then(r => setResearch(r.reports || [])),
       api.usage().then(r => setUsage(r)),
+      api.challenges().then(r => setChallenges(Array.isArray(r) ? r : (r?.challenges || []))),
     ]).finally(() => setLoading(false))
   }, [])
 
@@ -94,7 +97,7 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
           <span className="text-xs text-slate-500 group-hover:text-slate-400">{h.dashboard} &rarr;</span>
         </div>
         {metrics ? (
-          <div className="flex items-center justify-around">
+          <div className="flex items-center justify-around flex-wrap gap-3">
             <MiniGauge percent={metrics.cpu.percent} label="CPU" color={CHART_COLORS.cpu} />
             <MiniGauge percent={metrics.gpu.util_percent} label="GPU" color={CHART_COLORS.gpu} />
             <MiniGauge percent={metrics.ram.percent} label="RAM" color={CHART_COLORS.ram} />
@@ -113,6 +116,94 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
         ) : (
           <div className="flex gap-4 justify-around">
             {[1,2,3,4].map(i => <div key={i} className="w-16 h-16 rounded-full bg-slate-700/50 animate-pulse" />)}
+          </div>
+        )}
+      </div>
+
+      {/* Challenge Widget */}
+      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-slate-300">{c.title}</h3>
+          {challenges.length > 0 && (
+            <span className="text-xs text-emerald-400 font-mono">
+              {challenges.filter((ch: any) => ch.status === 'active').length} {c.active}
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <div className="flex gap-3">
+            {[1,2,3].map(i => <div key={i} className="h-24 rounded-lg bg-slate-700/30 animate-pulse flex-1" />)}
+          </div>
+        ) : challenges.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="text-xs text-slate-500">{c.noChallenges}</p>
+            <p className="text-[10px] text-slate-600 mt-1">{c.noChallengesHint}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {challenges.slice(0, 6).map((ch: any) => {
+              const pct = ch.progress?.percentage ?? (ch.target_amount > 0 ? Math.round((ch.current_amount / ch.target_amount) * 100) : 0)
+              const dDay = ch.progress?.d_day ?? ''
+              const msDone = ch.progress?.milestones_done ?? 0
+              const msTotal = ch.progress?.milestones_total ?? (ch.milestones?.length ?? 0)
+              const isComplete = ch.status === 'completed' || pct >= 100
+
+              return (
+                <div
+                  key={ch.id}
+                  className={`rounded-lg border p-3 ${
+                    isComplete
+                      ? 'bg-emerald-500/5 border-emerald-500/20'
+                      : 'bg-slate-700/20 border-slate-700/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium text-white truncate flex-1">{ch.title}</span>
+                    {dDay && (
+                      <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                        typeof dDay === 'number' && dDay <= 7
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {typeof dDay === 'number' ? `D-${dDay}` : dDay}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mb-2">
+                    <div className="flex items-center justify-between text-[10px] mb-1">
+                      <span className="text-slate-400">{c.progress}</span>
+                      <span className={`font-mono font-bold ${isComplete ? 'text-emerald-400' : 'text-white'}`}>
+                        {Math.min(pct, 100)}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          isComplete ? 'bg-emerald-500' :
+                          pct >= 70 ? 'bg-blue-500' :
+                          pct >= 30 ? 'bg-amber-500' : 'bg-slate-500'
+                        }`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Milestones + Amount */}
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-slate-500">
+                      {c.milestones}: {msDone}/{msTotal}
+                    </span>
+                    {ch.target_amount > 0 && (
+                      <span className="text-slate-400 font-mono">
+                        {Number(ch.current_amount || 0).toLocaleString()} / {Number(ch.target_amount).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

@@ -275,3 +275,19 @@ CREATE INDEX IF NOT EXISTS idx_expenses_paid ON expenses(paid_at);
 CREATE INDEX IF NOT EXISTS idx_research_topics_status ON research_topics(status, priority);
 CREATE INDEX IF NOT EXISTS idx_research_evidence_topic ON research_evidence(topic_id);
 CREATE INDEX IF NOT EXISTS idx_research_reports_topic ON research_reports(topic_id);
+
+-- Sentiment analysis scores
+CREATE TABLE IF NOT EXISTS sentiment_scores (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol      TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    score       REAL NOT NULL,                  -- -1.0 (very negative) to +1.0 (very positive)
+    label       TEXT NOT NULL,                  -- positive, negative, neutral
+    summary     TEXT,                           -- LLM-generated summary
+    news_count  INTEGER DEFAULT 0,             -- number of news articles analyzed
+    model_used  TEXT,
+    analyzed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sentiment_symbol ON sentiment_scores(symbol, analyzed_at);
+CREATE INDEX IF NOT EXISTS idx_sentiment_date ON sentiment_scores(analyzed_at);

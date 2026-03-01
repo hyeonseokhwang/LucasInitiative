@@ -37,9 +37,34 @@ export interface Messages {
     watchlist: string
     reports: string
     research: string
+    signals: string
+    inputhistory: string
+    dailyreport: string
     models: string
     logs: string
     settings: string
+  }
+
+  // Signals tab
+  sig: {
+    title: string
+    scan: string
+    scanning: string
+    lastScan: string
+    noSignals: string
+    noSignalsHint: string
+    goldenCross: string
+    deathCross: string
+    rsiOversold: string
+    rsiOverbought: string
+    volumeBreakout: string
+    buy: string
+    sell: string
+    caution: string
+    strong: string
+    moderate: string
+    detected: string
+    signalCount: string
   }
 
   // Home tab
@@ -67,6 +92,109 @@ export interface Messages {
     remaining: string
     noUsageData: string
     view: string
+  }
+
+  // Stocks tab
+  stocks: {
+    title: string
+    back: string
+    search: string
+    searchPlaceholder: string
+    allMarkets: string
+    allSectors: string
+    name: string
+    price: string
+    change: string
+    volume: string
+    marketCap: string
+    open: string
+    high: string
+    low: string
+    noData: string
+    sector: string
+  }
+
+  // Real Estate tab
+  re: {
+    title: string
+    trends: string
+    compare: string
+    deals: string
+    allDistricts: string
+    allTypes: string
+    sale: string
+    jeonse: string
+    monthly: string
+    months6: string
+    months12: string
+    months24: string
+    avgPriceTrend: string
+    monthlyDealCount: string
+    loadingTrends: string
+    noTrendData: string
+    dataCollectedHourly: string
+    avgPriceByDistrict: string
+    monthlyPriceCompare: string
+    loadingCompare: string
+    noCompareData: string
+    selectDistrictsHint: string
+    selected: string
+    max: string
+    refresh: string
+    deals_count: string
+    noRecentDeals: string
+    date: string
+    district: string
+    apt: string
+    type: string
+    priceLabel: string
+    area: string
+    floor: string
+    prev: string
+    next: string
+    searchApt: string
+    searchAptPlaceholder: string
+    priceRange: string
+    priceMin: string
+    priceMax: string
+    month: string
+    avg: string
+    min: string
+    maxPrice: string
+    avgArea: string
+    perM2: string
+  }
+
+  // Home - Challenge widget
+  challenge: {
+    title: string
+    progress: string
+    dDay: string
+    milestones: string
+    earnings: string
+    target: string
+    current: string
+    remaining: string
+    completed: string
+    active: string
+    noChallenges: string
+    noChallengesHint: string
+    deadline: string
+  }
+
+  // Daily Report tab
+  dr: {
+    title: string
+    selectDate: string
+    noReports: string
+    noReportsHint: string
+    generatedAt: string
+    reportType: string
+    combined: string
+    stock: string
+    realestate: string
+    loadingReport: string
+    back: string
   }
 
   // Settings tab
@@ -133,9 +261,33 @@ const ko: Messages = {
     watchlist: '관심목록',
     reports: '리포트',
     research: '리서치',
+    signals: '시그널',
+    inputhistory: '입력내역',
+    dailyreport: '일일리포트',
     models: '모델',
     logs: '로그',
     settings: '설정',
+  },
+
+  sig: {
+    title: '금융 시그널',
+    scan: '스캔',
+    scanning: '스캔 중...',
+    lastScan: '마지막 스캔',
+    noSignals: '감지된 시그널이 없습니다',
+    noSignalsHint: '스캔 버튼을 눌러 시그널을 감지하세요',
+    goldenCross: '골든크로스',
+    deathCross: '데드크로스',
+    rsiOversold: 'RSI 과매도',
+    rsiOverbought: 'RSI 과매수',
+    volumeBreakout: '거래량 돌파',
+    buy: '매수',
+    sell: '매도',
+    caution: '주의',
+    strong: '강함',
+    moderate: '보통',
+    detected: '감지',
+    signalCount: '개 시그널',
   },
 
   home: {
@@ -162,6 +314,105 @@ const ko: Messages = {
     remaining: '잔여',
     noUsageData: '사용 데이터 없음',
     view: '보기',
+  },
+
+  stocks: {
+    title: '주식',
+    back: '뒤로',
+    search: '검색',
+    searchPlaceholder: '종목명 또는 코드 검색...',
+    allMarkets: '전체',
+    allSectors: '전체 섹터',
+    name: '종목명',
+    price: '현재가',
+    change: '등락률',
+    volume: '거래량',
+    marketCap: '시가총액',
+    open: '시가',
+    high: '고가',
+    low: '저가',
+    noData: '종목 데이터가 없습니다',
+    sector: '섹터',
+  },
+
+  re: {
+    title: '부동산',
+    trends: '추이',
+    compare: '비교',
+    deals: '거래내역',
+    allDistricts: '전체 지역',
+    allTypes: '전체 유형',
+    sale: '매매',
+    jeonse: '전세',
+    monthly: '월세',
+    months6: '6개월',
+    months12: '12개월',
+    months24: '24개월',
+    avgPriceTrend: '평균가 추이',
+    monthlyDealCount: '월별 거래건수',
+    loadingTrends: '추이 로딩 중...',
+    noTrendData: '추이 데이터가 없습니다',
+    dataCollectedHourly: '데이터는 매시간 자동 수집됩니다',
+    avgPriceByDistrict: '지역별 평균가',
+    monthlyPriceCompare: '월별 가격 비교',
+    loadingCompare: '비교 데이터 로딩 중...',
+    noCompareData: '비교 데이터가 없습니다',
+    selectDistrictsHint: '지역을 선택하고 데이터 수집을 기다리세요',
+    selected: '선택됨',
+    max: '최대',
+    refresh: '새로고침',
+    deals_count: '건',
+    noRecentDeals: '최근 거래가 없습니다',
+    date: '날짜',
+    district: '지역',
+    apt: '아파트',
+    type: '유형',
+    priceLabel: '가격',
+    area: '면적',
+    floor: '층',
+    prev: '이전',
+    next: '다음',
+    searchApt: '아파트 검색',
+    searchAptPlaceholder: '아파트명 검색...',
+    priceRange: '가격대',
+    priceMin: '최소 (만원)',
+    priceMax: '최대 (만원)',
+    month: '월',
+    avg: '평균',
+    min: '최소',
+    maxPrice: '최대',
+    avgArea: '평균 면적',
+    perM2: '평당가',
+  },
+
+  challenge: {
+    title: '챌린지 현황',
+    progress: '진행률',
+    dDay: 'D-day',
+    milestones: '마일스톤',
+    earnings: '수익',
+    target: '목표',
+    current: '현재',
+    remaining: '잔여',
+    completed: '완료',
+    active: '진행중',
+    noChallenges: '등록된 챌린지가 없습니다',
+    noChallengesHint: '스케줄러에서 챌린지를 추가하세요',
+    deadline: '마감일',
+  },
+
+  dr: {
+    title: '일일 리포트',
+    selectDate: '날짜를 선택하세요',
+    noReports: '리포트가 없습니다',
+    noReportsHint: '데일리 리포트 생성 후 여기서 확인할 수 있습니다',
+    generatedAt: '생성일시',
+    reportType: '리포트 유형',
+    combined: '종합',
+    stock: '주식',
+    realestate: '부동산',
+    loadingReport: '리포트 로딩 중...',
+    back: '목록으로',
   },
 
   settings: {
@@ -227,9 +478,33 @@ const en: Messages = {
     watchlist: 'Watchlist',
     reports: 'Reports',
     research: 'Research',
+    signals: 'Signals',
+    inputhistory: 'History',
+    dailyreport: 'Daily Report',
     models: 'Models',
     logs: 'Logs',
     settings: 'Settings',
+  },
+
+  sig: {
+    title: 'Trading Signals',
+    scan: 'Scan',
+    scanning: 'Scanning...',
+    lastScan: 'Last Scan',
+    noSignals: 'No signals detected',
+    noSignalsHint: 'Press Scan to detect trading signals',
+    goldenCross: 'Golden Cross',
+    deathCross: 'Death Cross',
+    rsiOversold: 'RSI Oversold',
+    rsiOverbought: 'RSI Overbought',
+    volumeBreakout: 'Volume Breakout',
+    buy: 'Buy',
+    sell: 'Sell',
+    caution: 'Caution',
+    strong: 'Strong',
+    moderate: 'Moderate',
+    detected: 'detected',
+    signalCount: 'signals',
   },
 
   home: {
@@ -256,6 +531,105 @@ const en: Messages = {
     remaining: 'remaining',
     noUsageData: 'No usage data',
     view: 'View',
+  },
+
+  stocks: {
+    title: 'Stocks',
+    back: 'Back',
+    search: 'Search',
+    searchPlaceholder: 'Search by name or symbol...',
+    allMarkets: 'ALL',
+    allSectors: 'All Sectors',
+    name: 'Name',
+    price: 'Price',
+    change: 'Change',
+    volume: 'Volume',
+    marketCap: 'Market Cap',
+    open: 'Open',
+    high: 'High',
+    low: 'Low',
+    noData: 'No stock data available',
+    sector: 'Sector',
+  },
+
+  re: {
+    title: 'Real Estate',
+    trends: 'Trends',
+    compare: 'Compare',
+    deals: 'Deals',
+    allDistricts: 'All Districts',
+    allTypes: 'All Types',
+    sale: 'Sale',
+    jeonse: 'Jeonse',
+    monthly: 'Monthly',
+    months6: '6 months',
+    months12: '12 months',
+    months24: '24 months',
+    avgPriceTrend: 'Average Price Trend',
+    monthlyDealCount: 'Monthly Deal Count',
+    loadingTrends: 'Loading trends...',
+    noTrendData: 'No trend data available',
+    dataCollectedHourly: 'Data is collected automatically every hour',
+    avgPriceByDistrict: 'Average Price by District',
+    monthlyPriceCompare: 'Monthly Price Comparison',
+    loadingCompare: 'Loading comparison...',
+    noCompareData: 'No comparison data',
+    selectDistrictsHint: 'Select districts and wait for data collection',
+    selected: 'selected',
+    max: 'max',
+    refresh: 'Refresh',
+    deals_count: 'deals',
+    noRecentDeals: 'No recent deals',
+    date: 'Date',
+    district: 'District',
+    apt: 'Apt',
+    type: 'Type',
+    priceLabel: 'Price',
+    area: 'Area',
+    floor: 'Floor',
+    prev: 'Prev',
+    next: 'Next',
+    searchApt: 'Search Apt',
+    searchAptPlaceholder: 'Search apartment name...',
+    priceRange: 'Price Range',
+    priceMin: 'Min (10K KRW)',
+    priceMax: 'Max (10K KRW)',
+    month: 'Month',
+    avg: 'Avg',
+    min: 'Min',
+    maxPrice: 'Max',
+    avgArea: 'Avg Area',
+    perM2: 'Per m\u00B2',
+  },
+
+  challenge: {
+    title: 'Challenges',
+    progress: 'Progress',
+    dDay: 'D-day',
+    milestones: 'Milestones',
+    earnings: 'Earnings',
+    target: 'Target',
+    current: 'Current',
+    remaining: 'Remaining',
+    completed: 'Completed',
+    active: 'Active',
+    noChallenges: 'No challenges registered',
+    noChallengesHint: 'Add challenges in the Scheduler',
+    deadline: 'Deadline',
+  },
+
+  dr: {
+    title: 'Daily Reports',
+    selectDate: 'Select a date',
+    noReports: 'No reports available',
+    noReportsHint: 'Reports will appear here after generation',
+    generatedAt: 'Generated at',
+    reportType: 'Report Type',
+    combined: 'Combined',
+    stock: 'Stock',
+    realestate: 'Real Estate',
+    loadingReport: 'Loading report...',
+    back: 'Back to list',
   },
 
   settings: {

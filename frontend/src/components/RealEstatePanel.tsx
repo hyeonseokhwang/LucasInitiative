@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { api, downloadExport } from '../lib/api'
 import {
   ACCENT, SERIES_PALETTE, SURFACE,
-  commonAxisProps, commonGridProps, commonTooltipProps,
+  commonGridProps, commonTooltipProps,
 } from '../lib/chartTheme'
+import { useLocale } from '../hooks/useLocale'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -45,10 +46,10 @@ interface Deal {
   recorded_at: string
 }
 
-const DEAL_TYPES = [
-  { value: 'sale', label: '매매', color: ACCENT.blue },
-  { value: 'jeonse', label: '전세', color: ACCENT.green },
-  { value: 'monthly', label: '월세', color: ACCENT.amber },
+const DEAL_TYPES_DATA = [
+  { value: 'sale', koLabel: '매매', enLabel: 'Sale', color: ACCENT.blue },
+  { value: 'jeonse', koLabel: '전세', enLabel: 'Jeonse', color: ACCENT.green },
+  { value: 'monthly', koLabel: '월세', enLabel: 'Monthly', color: ACCENT.amber },
 ]
 
 const DISTRICT_COLORS = SERIES_PALETTE
@@ -65,6 +66,16 @@ type SortDir = 'asc' | 'desc'
 const PAGE_SIZE = 20
 
 export function RealEstatePanel() {
+  const { locale, t } = useLocale()
+  const r = t.re
+  const isKo = locale === 'ko'
+
+  // Locale-aware deal types
+  const DEAL_TYPES = useMemo(() =>
+    DEAL_TYPES_DATA.map(dt => ({ ...dt, label: isKo ? dt.koLabel : dt.enLabel })),
+    [isKo]
+  )
+
   const [tab, setTab] = useState<Tab>('trends')
   const [districts, setDistricts] = useState<string[]>([])
   const [seoulMajor, setSeoulMajor] = useState<string[]>([])
@@ -91,6 +102,13 @@ export function RealEstatePanel() {
   const [sortKey, setSortKey] = useState<SortKey>('deal_date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [page, setPage] = useState(0)
+
+  // Apartment search
+  const [aptSearch, setAptSearch] = useState('')
+
+  // Price range filter (in 만원 units)
+  const [priceMin, setPriceMin] = useState('')
+  const [priceMax, setPriceMax] = useState('')
 
   useEffect(() => {
     api.reDistricts().then(d => {
@@ -172,16 +190,26 @@ export function RealEstatePanel() {
 
   useEffect(() => { if (tab === 'deals') loadDeals() }, [tab, loadDeals])
 
-  // Sorted + paginated deals
+  // Filter deals by apt search and price range, then sort
   const sortedDeals = useMemo(() => {
-    const sorted = [...deals].sort((a, b) => {
+    let filtered = deals
+    if (aptSearch) {
+      const q = aptSearch.toLowerCase()
+      filtered = filtered.filter(d => d.apt_name?.toLowerCase().includes(q))
+    }
+    const minVal = priceMin ? Number(priceMin) : 0
+    const maxVal = priceMax ? Number(priceMax) : Infinity
+    if (minVal > 0 || maxVal < Infinity) {
+      filtered = filtered.filter(d => d.price >= minVal && d.price <= maxVal)
+    }
+    const sorted = [...filtered].sort((a, b) => {
       const av = a[sortKey] ?? ''
       const bv = b[sortKey] ?? ''
       if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av
       return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av))
     })
     return sorted
-  }, [deals, sortKey, sortDir])
+  }, [deals, sortKey, sortDir, aptSearch, priceMin, priceMax])
 
   const pagedDeals = useMemo(() => {
     return sortedDeals.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -233,19 +261,19 @@ export function RealEstatePanel() {
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700/50">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white font-medium">Real Estate</h2>
+          <h2 className="text-white font-medium">{r.title}</h2>
           <button onClick={() => downloadExport('/api/export/realestate?format=csv', 'realestate.csv')}
             className="px-2 py-1 text-[10px] rounded bg-slate-700/60 text-slate-400 hover:text-white hover:bg-slate-600 transition" title="Export CSV">
             CSV
           </button>
         </div>
         <div className="flex gap-1">
-          {(['trends', 'compare', 'deals'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
+          {(['trends', 'compare', 'deals'] as const).map(tb => (
+            <button key={tb} onClick={() => setTab(tb)}
               className={`text-xs px-3 py-1.5 rounded-lg transition ${
-                tab === t ? 'bg-blue-600/30 text-blue-400' : 'bg-slate-700/30 text-slate-400 hover:text-white'
+                tab === tb ? 'bg-blue-600/30 text-blue-400' : 'bg-slate-700/30 text-slate-400 hover:text-white'
               }`}>
-              {{ trends: 'Trends', compare: 'Compare', deals: 'Deals' }[t]}
+              {{ trends: r.trends, compare: r.compare, deals: r.deals }[tb]}
             </button>
           ))}
         </div>
@@ -259,14 +287,14 @@ export function RealEstatePanel() {
             <div className="flex gap-2 flex-wrap items-center">
               <select value={selectedDistrict} onChange={e => setSelectedDistrict(e.target.value)}
                 className="text-xs bg-slate-700 text-slate-300 rounded px-2 py-1 border border-slate-600">
-                <option value="">All Districts</option>
+                <option value="">{r.allDistricts}</option>
                 {districtList.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               <select value={trendMonths} onChange={e => setTrendMonths(Number(e.target.value))}
                 className="text-xs bg-slate-700 text-slate-300 rounded px-2 py-1 border border-slate-600">
-                <option value={6}>6 months</option>
-                <option value={12}>12 months</option>
-                <option value={24}>24 months</option>
+                <option value={6}>{r.months6}</option>
+                <option value={12}>{r.months12}</option>
+                <option value={24}>{r.months24}</option>
               </select>
               <div className="flex gap-1 ml-2">
                 {DEAL_TYPES.map(dt => (
@@ -284,18 +312,18 @@ export function RealEstatePanel() {
             </div>
 
             {trendLoading ? (
-              <div className="text-center text-slate-500 py-10">Loading trends...</div>
+              <div className="text-center text-slate-500 py-10">{r.loadingTrends}</div>
             ) : mergedTrendChart.length === 0 ? (
               <div className="text-center text-slate-500 py-10">
-                <p className="text-sm">No trend data available</p>
-                <p className="text-xs mt-1">Data is collected automatically every hour</p>
+                <p className="text-sm">{r.noTrendData}</p>
+                <p className="text-xs mt-1">{r.dataCollectedHourly}</p>
               </div>
             ) : (
               <>
                 {/* Multi-type Price Trend Chart */}
                 <div className="bg-slate-900/50 rounded-lg p-4">
                   <h3 className="text-sm text-slate-300 mb-3">
-                    Average Price Trend ({trendDealTypes.map(dt => DEAL_TYPES.find(t => t.value === dt)?.label).join(' / ')})
+                    {r.avgPriceTrend} ({trendDealTypes.map(dt => DEAL_TYPES.find(tp => tp.value === dt)?.label).join(' / ')})
                   </h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={mergedTrendChart}>
@@ -320,7 +348,7 @@ export function RealEstatePanel() {
 
                 {/* Deal Count Bar Chart */}
                 <div className="bg-slate-900/50 rounded-lg p-4">
-                  <h3 className="text-sm text-slate-300 mb-3">Monthly Deal Count</h3>
+                  <h3 className="text-sm text-slate-300 mb-3">{r.monthlyDealCount}</h3>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={mergedTrendChart}>
                       <CartesianGrid {...commonGridProps} />
@@ -346,14 +374,14 @@ export function RealEstatePanel() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-slate-400 border-b border-slate-700">
-                        <th className="px-3 py-2 text-left">Month</th>
-                        <th className="px-3 py-2 text-left">District</th>
-                        <th className="px-3 py-2 text-left">Type</th>
-                        <th className="px-3 py-2 text-right">Avg</th>
-                        <th className="px-3 py-2 text-right">Min</th>
-                        <th className="px-3 py-2 text-right">Max</th>
-                        <th className="px-3 py-2 text-right">Deals</th>
-                        <th className="px-3 py-2 text-right">Avg Area</th>
+                        <th className="px-3 py-2 text-left">{r.month}</th>
+                        <th className="px-3 py-2 text-left">{r.district}</th>
+                        <th className="px-3 py-2 text-left">{r.type}</th>
+                        <th className="px-3 py-2 text-right">{r.avg}</th>
+                        <th className="px-3 py-2 text-right">{r.min}</th>
+                        <th className="px-3 py-2 text-right">{r.maxPrice}</th>
+                        <th className="px-3 py-2 text-right">{r.deals}</th>
+                        <th className="px-3 py-2 text-right">{r.avgArea}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -388,14 +416,14 @@ export function RealEstatePanel() {
           <div className="space-y-4">
             {/* District selector chips + deal type */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-500">Type:</span>
+              <span className="text-xs text-slate-500">{r.type}:</span>
               <select value={compareDealType} onChange={e => setCompareDealType(e.target.value)}
                 className="text-xs bg-slate-700 text-slate-300 rounded px-2 py-1 border border-slate-600">
-                {DEAL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {DEAL_TYPES.map(tp => <option key={tp.value} value={tp.value}>{tp.label}</option>)}
               </select>
             </div>
             <div className="flex gap-1 flex-wrap">
-              {districtList.map((d, i) => (
+              {districtList.map((d) => (
                 <button key={d} onClick={() => toggleCompareDistrict(d)}
                   className={`text-xs px-2 py-1 rounded-full transition ${
                     compareDistricts.includes(d)
@@ -412,23 +440,23 @@ export function RealEstatePanel() {
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              {compareDistricts.length}/5 selected
-              {compareDistricts.length >= 5 && <span className="text-amber-400 ml-1">(max)</span>}
+              {compareDistricts.length}/5 {r.selected}
+              {compareDistricts.length >= 5 && <span className="text-amber-400 ml-1">({r.max})</span>}
             </p>
 
             {compareLoading ? (
-              <div className="text-center text-slate-500 py-10">Loading comparison...</div>
+              <div className="text-center text-slate-500 py-10">{r.loadingCompare}</div>
             ) : compareData.length === 0 ? (
               <div className="text-center text-slate-500 py-10">
-                <p className="text-sm">No comparison data</p>
-                <p className="text-xs mt-1">Select districts and wait for data collection</p>
+                <p className="text-sm">{r.noCompareData}</p>
+                <p className="text-xs mt-1">{r.selectDistrictsHint}</p>
               </div>
             ) : (
               <>
                 {/* Average Price Bar */}
                 <div className="bg-slate-900/50 rounded-lg p-4">
                   <h3 className="text-sm text-slate-300 mb-3">
-                    Average Price by District ({DEAL_TYPES.find(t => t.value === compareDealType)?.label})
+                    {r.avgPriceByDistrict} ({DEAL_TYPES.find(tp => tp.value === compareDealType)?.label})
                   </h3>
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={compareData}>
@@ -440,8 +468,8 @@ export function RealEstatePanel() {
                         formatter={(v, name) => [formatPrice(Number(v)), String(name)]}
                       />
                       <Legend />
-                      <Bar dataKey="avg_price" name="Avg Price" fill={ACCENT.blue} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="avg_price_per_m2" name="Per m²" fill={ACCENT.violet} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avg_price" name={r.avg} fill={ACCENT.blue} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avg_price_per_m2" name={r.perM2} fill={ACCENT.violet} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -449,7 +477,7 @@ export function RealEstatePanel() {
                 {/* Monthly Trend Comparison */}
                 {monthlyChartData.length > 0 && (
                   <div className="bg-slate-900/50 rounded-lg p-4">
-                    <h3 className="text-sm text-slate-300 mb-3">Monthly Price Comparison</h3>
+                    <h3 className="text-sm text-slate-300 mb-3">{r.monthlyPriceCompare}</h3>
                     <ResponsiveContainer width="100%" height={280}>
                       <LineChart data={monthlyChartData}>
                         <CartesianGrid {...commonGridProps} />
@@ -475,13 +503,13 @@ export function RealEstatePanel() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-slate-400 border-b border-slate-700">
-                        <th className="px-3 py-2 text-left">District</th>
-                        <th className="px-3 py-2 text-right">Avg Price</th>
-                        <th className="px-3 py-2 text-right">Per m²</th>
-                        <th className="px-3 py-2 text-right">Min</th>
-                        <th className="px-3 py-2 text-right">Max</th>
-                        <th className="px-3 py-2 text-right">Deals</th>
-                        <th className="px-3 py-2 text-right">Avg Area</th>
+                        <th className="px-3 py-2 text-left">{r.district}</th>
+                        <th className="px-3 py-2 text-right">{r.avg}</th>
+                        <th className="px-3 py-2 text-right">{r.perM2}</th>
+                        <th className="px-3 py-2 text-right">{r.min}</th>
+                        <th className="px-3 py-2 text-right">{r.maxPrice}</th>
+                        <th className="px-3 py-2 text-right">{r.deals}</th>
+                        <th className="px-3 py-2 text-right">{r.avgArea}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -510,26 +538,63 @@ export function RealEstatePanel() {
             <div className="flex gap-2 flex-wrap items-center">
               <select value={dealsDistrict} onChange={e => { setDealsDistrict(e.target.value) }}
                 className="text-xs bg-slate-700 text-slate-300 rounded px-2 py-1 border border-slate-600">
-                <option value="">All Districts</option>
+                <option value="">{r.allDistricts}</option>
                 {districtList.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               <select value={dealsDealType} onChange={e => setDealsDealType(e.target.value)}
                 className="text-xs bg-slate-700 text-slate-300 rounded px-2 py-1 border border-slate-600">
-                <option value="">All Types</option>
-                {DEAL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                <option value="">{r.allTypes}</option>
+                {DEAL_TYPES.map(tp => <option key={tp.value} value={tp.value}>{tp.label}</option>)}
               </select>
               <button onClick={loadDeals}
                 className="text-xs px-3 py-1 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition">
-                Refresh
+                {r.refresh}
               </button>
-              <span className="text-xs text-slate-500 ml-auto">{sortedDeals.length} deals</span>
+              <span className="text-xs text-slate-500 ml-auto">{sortedDeals.length} {r.deals_count}</span>
+            </div>
+
+            {/* Apartment search + Price range filter */}
+            <div className="flex gap-2 flex-wrap items-center">
+              <input
+                type="text"
+                value={aptSearch}
+                onChange={e => { setAptSearch(e.target.value); setPage(0) }}
+                placeholder={r.searchAptPlaceholder}
+                className="flex-1 min-w-[150px] px-2 py-1 text-xs bg-slate-900/50 border border-slate-600/50 rounded
+                  text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+              />
+              <input
+                type="number"
+                value={priceMin}
+                onChange={e => { setPriceMin(e.target.value); setPage(0) }}
+                placeholder={r.priceMin}
+                className="w-28 px-2 py-1 text-xs bg-slate-900/50 border border-slate-600/50 rounded
+                  text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+              />
+              <span className="text-xs text-slate-600">~</span>
+              <input
+                type="number"
+                value={priceMax}
+                onChange={e => { setPriceMax(e.target.value); setPage(0) }}
+                placeholder={r.priceMax}
+                className="w-28 px-2 py-1 text-xs bg-slate-900/50 border border-slate-600/50 rounded
+                  text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+              />
+              {(aptSearch || priceMin || priceMax) && (
+                <button
+                  onClick={() => { setAptSearch(''); setPriceMin(''); setPriceMax(''); setPage(0) }}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  {t.reset}
+                </button>
+              )}
             </div>
 
             {dealsLoading ? (
-              <div className="text-center text-slate-500 py-10">Loading deals...</div>
+              <div className="text-center text-slate-500 py-10">{t.loading}</div>
             ) : deals.length === 0 ? (
               <div className="text-center text-slate-500 py-10">
-                <p className="text-sm">No recent deals</p>
+                <p className="text-sm">{r.noRecentDeals}</p>
               </div>
             ) : (
               <>
@@ -538,23 +603,23 @@ export function RealEstatePanel() {
                     <thead>
                       <tr className="text-slate-400 border-b border-slate-700">
                         <th className="px-3 py-2 text-left cursor-pointer hover:text-white select-none" onClick={() => handleSort('deal_date')}>
-                          Date{sortIcon('deal_date')}
+                          {r.date}{sortIcon('deal_date')}
                         </th>
                         <th className="px-3 py-2 text-left cursor-pointer hover:text-white select-none" onClick={() => handleSort('district')}>
-                          District{sortIcon('district')}
+                          {r.district}{sortIcon('district')}
                         </th>
                         <th className="px-3 py-2 text-left cursor-pointer hover:text-white select-none" onClick={() => handleSort('apt_name')}>
-                          Apt{sortIcon('apt_name')}
+                          {r.apt}{sortIcon('apt_name')}
                         </th>
-                        <th className="px-3 py-2 text-left">Type</th>
+                        <th className="px-3 py-2 text-left">{r.type}</th>
                         <th className="px-3 py-2 text-right cursor-pointer hover:text-white select-none" onClick={() => handleSort('price')}>
-                          Price{sortIcon('price')}
+                          {r.priceLabel}{sortIcon('price')}
                         </th>
                         <th className="px-3 py-2 text-right cursor-pointer hover:text-white select-none" onClick={() => handleSort('area_m2')}>
-                          Area{sortIcon('area_m2')}
+                          {r.area}{sortIcon('area_m2')}
                         </th>
                         <th className="px-3 py-2 text-right cursor-pointer hover:text-white select-none" onClick={() => handleSort('floor')}>
-                          Floor{sortIcon('floor')}
+                          {r.floor}{sortIcon('floor')}
                         </th>
                       </tr>
                     </thead>
@@ -590,14 +655,14 @@ export function RealEstatePanel() {
                   <div className="flex items-center justify-center gap-2">
                     <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
                       className="text-xs px-3 py-1.5 rounded bg-slate-700/50 text-slate-400 hover:text-white disabled:opacity-30 transition">
-                      Prev
+                      {r.prev}
                     </button>
                     <span className="text-xs text-slate-400">
                       {page + 1} / {totalPages}
                     </span>
                     <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
                       className="text-xs px-3 py-1.5 rounded bg-slate-700/50 text-slate-400 hover:text-white disabled:opacity-30 transition">
-                      Next
+                      {r.next}
                     </button>
                   </div>
                 )}

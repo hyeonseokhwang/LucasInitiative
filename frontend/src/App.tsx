@@ -25,13 +25,16 @@ import { HomeOverview } from './components/HomeOverview'
 import { SettingsPanel } from './components/SettingsPanel'
 import { ModelManagementPanel } from './components/ModelManagementPanel'
 import { LogViewer } from './components/LogViewer'
+import { InputHistoryPanel } from './components/InputHistoryPanel'
+import { SignalPanel } from './components/SignalPanel'
+import { DailyReportPanel } from './components/DailyReportPanel'
 import { CommandPalette, type PaletteCommand } from './components/CommandPalette'
 import { NotificationBell } from './components/NotificationBell'
 import { PanelWrapper } from './components/PanelWrapper'
 import { GridLayout } from './components/GridLayout'
 import { useLayoutSettings } from './hooks/useLayoutSettings'
 
-type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'models' | 'logs' | 'settings'
+type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'inputhistory' | 'dailyreport' | 'models' | 'logs' | 'settings'
 
 function AppInner() {
   const { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, collectorAlert, researchUpdate, researchComplete } = useWebSocket()
@@ -181,7 +184,7 @@ function AppInner() {
 
       {/* Navigation */}
       <nav className="bg-slate-800/40 border-b border-slate-700/30 px-4 flex gap-1 overflow-x-auto">
-        {(['home', 'company', 'dashboard', 'chat', 'schedule', 'expense', 'stocks', 'portfolio', 'sectors', 'realestate', 'watchlist', 'reports', 'research', 'models', 'logs', 'settings'] as const).map(v => (
+        {(['home', 'stocks', 'realestate', 'signals', 'dailyreport', 'research', 'inputhistory', 'dashboard', 'company', 'chat', 'schedule', 'expense', 'portfolio', 'sectors', 'watchlist', 'reports', 'models', 'logs', 'settings'] as const).map(v => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -288,6 +291,24 @@ function AppInner() {
         {layout.mode === 'focus' && view === 'research' && (
           <PanelWrapper title="Research" interval={60000} refreshTrigger={globalRefresh}>
             <ResearchPanel researchUpdate={researchUpdate} researchComplete={researchComplete} />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'signals' && (
+          <PanelWrapper title="Signals" interval={60000} refreshTrigger={globalRefresh}>
+            <SignalPanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'inputhistory' && (
+          <PanelWrapper title="Input History" interval={30000} refreshTrigger={globalRefresh}>
+            <InputHistoryPanel />
+          </PanelWrapper>
+        )}
+
+        {layout.mode === 'focus' && view === 'dailyreport' && (
+          <PanelWrapper title="Daily Reports" interval={60000} refreshTrigger={globalRefresh}>
+            <DailyReportPanel />
           </PanelWrapper>
         )}
 

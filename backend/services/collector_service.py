@@ -228,7 +228,7 @@ class Collector:
 
     def __init__(self):
         self._running = False
-        self._stats = {"stock_runs": 0, "news_runs": 0, "realestate_runs": 0, "started_at": None}
+        self._stats = {"stock_runs": 0, "news_runs": 0, "realestate_runs": 0, "realestate_data_runs": 0, "signal_runs": 0, "sentiment_runs": 0, "started_at": None}
 
     async def start(self):
         """Start all collection loops."""
@@ -240,12 +240,18 @@ class Collector:
         print("[Collector] Starting background collection...")
         print("[Collector]   Stock prices: every 5 minutes")
         print("[Collector]   Financial news: every 30 minutes")
-        print("[Collector]   Real estate: every 60 minutes")
+        print("[Collector]   Real estate news: every 60 minutes")
+        print("[Collector]   Real estate data: every 6 hours")
+        print("[Collector]   Signal scan: every 2 hours")
+        print("[Collector]   Sentiment analysis: every 4 hours")
 
         await asyncio.gather(
             self._stock_loop(),
             self._news_loop(),
             self._realestate_loop(),
+            self._realestate_data_loop(),
+            self._signal_loop(),
+            self._sentiment_loop(),
         )
 
     async def _stock_loop(self):
@@ -271,7 +277,7 @@ class Collector:
             await asyncio.sleep(1800)
 
     async def _realestate_loop(self):
-        """Collect real estate data every 60 minutes."""
+        """Collect real estate news every 60 minutes."""
         from services.agent_service import agent_manager
         await asyncio.sleep(60)
         while self._running:
@@ -280,6 +286,72 @@ class Collector:
             self._stats["realestate_runs"] += 1
             await agent_manager.update_status("realestate", "idle", "", f"Found {count} new items (run #{self._stats['realestate_runs']})")
             await asyncio.sleep(3600)
+
+    async def _realestate_data_loop(self):
+        """Collect real estate transaction data every 6 hours."""
+        from services.agent_service import agent_manager
+        await asyncio.sleep(120)  # Wait 2 minutes after startup
+        while self._running:
+            try:
+                await agent_manager.update_status("realestate", "working", "Collecting real estate transaction data...")
+                from services.realestate_service import collect_realestate_data, generate_realestate_report
+                data = await collect_realestate_data()
+                report = await generate_realestate_report()
+                self._stats["realestate_data_runs"] += 1
+
+                # Broadcast update
+                await ws_manager.broadcast({
+                    "type": "collector_update",
+                    "data": {"category": "realestate_data", "message": f"Real estate data collected (run #{self._stats['realestate_data_runs']})"},
+                })
+
+                await agent_manager.update_status("realestate", "idle", "", f"Data collection done (run #{self._stats['realestate_data_runs']})")
+                print(f"[Collector] Real estate data collected (run #{self._stats['realestate_data_runs']})")
+            except Exception as e:
+                print(f"[Collector] Real estate data error: {e}")
+                await agent_manager.update_status("realestate", "idle", "", f"Error: {e}")
+
+            await asyncio.sleep(21600)  # 6 hours
+
+    async def _signal_loop(self):
+        """Scan for trading signals every 2 hours."""
+        from services.agent_service import agent_manager
+        await asyncio.sleep(180)  # Wait 3 minutes after startup
+        while self._running:
+            try:
+                await agent_manager.update_status("stock", "working", "Scanning for trading signals...")
+                from services.signal_detector import scan_all_signals
+                signals = await scan_all_signals()
+                self._stats["signal_runs"] += 1
+
+                status_msg = f"Signal scan: {len(signals)} found (run #{self._stats['signal_runs']})"
+                await agent_manager.update_status("stock", "idle", "", status_msg)
+                print(f"[Collector] {status_msg}")
+            except Exception as e:
+                print(f"[Collector] Signal scan error: {e}")
+                await agent_manager.update_status("stock", "idle", "", f"Signal error: {e}")
+
+            await asyncio.sleep(7200)  # 2 hours
+
+    async def _sentiment_loop(self):
+        """Run sentiment analysis every 4 hours."""
+        from services.agent_service import agent_manager
+        await asyncio.sleep(600)  # Wait 10 minutes after startup
+        while self._running:
+            try:
+                await agent_manager.update_status("stock", "working", "Running LLM sentiment analysis...")
+                from services.sentiment_service import analyze_all_sentiment
+                results = await analyze_all_sentiment(hours=24)
+                self._stats["sentiment_runs"] += 1
+
+                status_msg = f"Sentiment: {len(results)} stocks scored (run #{self._stats['sentiment_runs']})"
+                await agent_manager.update_status("stock", "idle", "", status_msg)
+                print(f"[Collector] {status_msg}")
+            except Exception as e:
+                print(f"[Collector] Sentiment analysis error: {e}")
+                await agent_manager.update_status("stock", "idle", "", f"Sentiment error: {e}")
+
+            await asyncio.sleep(14400)  # 4 hours
 
     def get_stats(self) -> dict:
         return {**self._stats, "running": self._running}
