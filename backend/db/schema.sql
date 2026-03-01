@@ -293,3 +293,60 @@ CREATE TABLE IF NOT EXISTS sentiment_scores (
 
 CREATE INDEX IF NOT EXISTS idx_sentiment_symbol ON sentiment_scores(symbol, analyzed_at);
 CREATE INDEX IF NOT EXISTS idx_sentiment_date ON sentiment_scores(analyzed_at);
+
+-- Keyword alert subscriptions
+CREATE TABLE IF NOT EXISTS research_keyword_alerts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    keyword     TEXT NOT NULL,
+    category    TEXT DEFAULT 'all',              -- all, stock, realestate, general
+    enabled     INTEGER DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_keyword_alerts_enabled ON research_keyword_alerts(enabled);
+
+-- Research quality metrics (per report)
+CREATE TABLE IF NOT EXISTS research_quality_metrics (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_id       INTEGER NOT NULL REFERENCES research_reports(id) ON DELETE CASCADE,
+    source_count    INTEGER DEFAULT 0,
+    unique_sources  INTEGER DEFAULT 0,
+    web_sources     INTEGER DEFAULT 0,
+    db_sources      INTEGER DEFAULT 0,
+    verified_count  INTEGER DEFAULT 0,
+    duplicate_rate  REAL DEFAULT 0.0,           -- 0.0 ~ 1.0
+    avg_confidence  REAL DEFAULT 0.0,
+    min_confidence  REAL DEFAULT 0.0,
+    max_confidence  REAL DEFAULT 0.0,
+    source_diversity REAL DEFAULT 0.0,          -- unique_sources / source_count
+    freshness_hours REAL DEFAULT 0.0,           -- avg age of evidence
+    quality_score   REAL DEFAULT 0.0,           -- composite 0.0 ~ 1.0
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_quality_metrics_report ON research_quality_metrics(report_id);
+
+-- Research scheduled keywords (daily auto-research)
+CREATE TABLE IF NOT EXISTS research_schedule (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    keyword     TEXT NOT NULL,
+    category    TEXT DEFAULT 'general',
+    frequency   TEXT DEFAULT 'daily',           -- daily, weekly
+    enabled     INTEGER DEFAULT 1,
+    last_run    TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_research_schedule_enabled ON research_schedule(enabled);
+
+-- Performance indexes (Round 4)
+CREATE INDEX IF NOT EXISTS idx_collected_items_created ON collected_items(created_at);
+CREATE INDEX IF NOT EXISTS idx_research_reports_created ON research_reports(created_at);
+CREATE INDEX IF NOT EXISTS idx_research_reports_bookmarked ON research_reports(bookmarked, created_at);
+CREATE INDEX IF NOT EXISTS idx_research_topics_created ON research_topics(created_at);
+CREATE INDEX IF NOT EXISTS idx_research_topics_category ON research_topics(category, created_at);
+CREATE INDEX IF NOT EXISTS idx_market_data_recorded ON market_data(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_daily_reports_created ON daily_reports(created_at);
+CREATE INDEX IF NOT EXISTS idx_api_usage_created ON api_usage(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_sentiment_scores_analyzed ON sentiment_scores(analyzed_at DESC);

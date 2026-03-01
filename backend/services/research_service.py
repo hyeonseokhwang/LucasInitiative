@@ -613,8 +613,10 @@ CEO인 Lucas에게 보고하는 심층 리서치 보고서를 작성하세요.
 
 async def _run_research(topic_data: dict) -> dict | None:
     """Execute full 5-stage research pipeline for one topic."""
+    import time as _time
     from services.agent_service import agent_manager
 
+    _pipeline_start = _time.time()
     title = topic_data["title"]
     query = topic_data["query"]
     priority = topic_data.get("priority", 5)
@@ -732,6 +734,27 @@ async def _run_research(topic_data: dict) -> dict | None:
         except Exception as e:
             print(f"[Research] Notification error: {e}")
 
+        # Calculate quality metrics
+        try:
+            from services.research_enhanced_service import calculate_quality_metrics
+            await calculate_quality_metrics(report_id, topic_id)
+        except Exception as e:
+            print(f"[Research] Quality metrics error: {e}")
+
+        # Check keyword alerts
+        try:
+            from services.research_enhanced_service import check_keyword_alerts
+            await check_keyword_alerts(title, summary, report_id)
+        except Exception as e:
+            print(f"[Research] Keyword alert error: {e}")
+
+        # Record pipeline success
+        try:
+            from services.research_analytics_service import record_pipeline_run
+            record_pipeline_run(True, _time.time() - _pipeline_start, title)
+        except Exception:
+            pass
+
         return {
             "topic_id": topic_id,
             "report_id": report_id,
@@ -743,6 +766,12 @@ async def _run_research(topic_data: dict) -> dict | None:
     except Exception as e:
         print(f"[Research] Pipeline error for '{title}': {e}")
         await agent_manager.update_status("research", "idle", "", f"Error: {e}")
+        # Record pipeline failure
+        try:
+            from services.research_analytics_service import record_pipeline_run
+            record_pipeline_run(False, _time.time() - _pipeline_start, title, str(e))
+        except Exception:
+            pass
         return None
 
 

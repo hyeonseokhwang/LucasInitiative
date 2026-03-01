@@ -1,10 +1,17 @@
 from fastapi import APIRouter, Query
+from fastapi.responses import Response
 from services.db_service import execute, fetch_all, fetch_one
 from services.research_service import research_engine, queue_manual
 from services.signal_detector import scan_all_signals, get_recent_signals
 from services.vram_manager import vram_manager
 from services.sentiment_service import analyze_all_sentiment, get_latest_sentiment, get_sentiment_history
 from services.report_service import list_daily_reports, get_daily_report_by_date
+from services.research_enhanced_service import (
+    get_scheduled_keywords, add_scheduled_keyword, update_scheduled_keyword, delete_scheduled_keyword,
+    run_scheduled_research, compare_research, compare_two_reports, export_single_report_md,
+    get_keyword_alerts, add_keyword_alert, update_keyword_alert, delete_keyword_alert,
+    get_quality_metrics, get_quality_overview,
+)
 
 router = APIRouter()
 
@@ -215,3 +222,141 @@ async def get_daily_report(date: str):
     if not report:
         return {"error": "Report not found", "date": date}
     return {"report": report}
+
+
+# --- Research Auto-Scheduling ---
+
+@router.get("/schedule")
+async def list_scheduled():
+    """List all scheduled research keywords."""
+    keywords = await get_scheduled_keywords()
+    return {"schedule": keywords, "count": len(keywords)}
+
+
+@router.post("/schedule")
+async def create_scheduled(keyword: str = Query(..., min_length=2), category: str = "general", frequency: str = "daily"):
+    """Add a new scheduled research keyword."""
+    kid = await add_scheduled_keyword(keyword, category, frequency)
+    return {"id": kid, "keyword": keyword, "category": category, "frequency": frequency}
+
+
+@router.put("/schedule/{kid}")
+async def modify_scheduled(kid: int, enabled: bool = None, keyword: str = None, category: str = None, frequency: str = None):
+    """Update a scheduled keyword."""
+    ok = await update_scheduled_keyword(kid, enabled=enabled, keyword=keyword, category=category, frequency=frequency)
+    if not ok:
+        return {"error": "Not found"}
+    return {"id": kid, "status": "updated"}
+
+
+@router.delete("/schedule/{kid}")
+async def remove_scheduled(kid: int):
+    """Delete a scheduled keyword."""
+    ok = await delete_scheduled_keyword(kid)
+    if not ok:
+        return {"error": "Not found"}
+    return {"id": kid, "status": "deleted"}
+
+
+@router.post("/schedule/run")
+async def trigger_scheduled():
+    """Manually trigger all due scheduled research."""
+    count = await run_scheduled_research()
+    return {"status": "completed", "queued": count}
+
+
+# --- Research Comparison ---
+
+@router.get("/compare")
+async def compare_topic(topic: str = Query(..., min_length=2), limit: int = Query(5, le=10)):
+    """Compare past vs current research on a topic."""
+    result = await compare_research(topic, limit)
+    return result
+
+
+@router.get("/compare/{report_a}/{report_b}")
+async def compare_reports(report_a: int, report_b: int):
+    """Compare two specific reports."""
+    result = await compare_two_reports(report_a, report_b)
+    return result
+
+
+# --- Single Report Export ---
+
+@router.get("/reports/{report_id}/export")
+async def export_report(report_id: int, format: str = "md"):
+    """Export a single report as Markdown or PDF."""
+    if format == "pdf":
+        try:
+            from services.pdf_export_service import export_report_pdf
+            pdf_bytes = await export_report_pdf(report_id)
+            if not pdf_bytes:
+                return {"error": "Report not found"}
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename=research-report-{report_id}.pdf"},
+            )
+        except ImportError:
+            return {"error": "reportlab not installed. Run: pip install reportlab"}
+    # Default: Markdown
+    md = await export_single_report_md(report_id)
+    if not md:
+        return {"error": "Report not found"}
+    return Response(
+        content=md,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=research-report-{report_id}.md"},
+    )
+
+
+# --- Keyword Alerts ---
+
+@router.get("/alerts")
+async def list_alerts():
+    """List all keyword alert subscriptions."""
+    alerts = await get_keyword_alerts()
+    return {"alerts": alerts, "count": len(alerts)}
+
+
+@router.post("/alerts")
+async def create_alert(keyword: str = Query(..., min_length=2), category: str = "all"):
+    """Subscribe to a keyword alert."""
+    aid = await add_keyword_alert(keyword, category)
+    return {"id": aid, "keyword": keyword, "category": category}
+
+
+@router.put("/alerts/{alert_id}")
+async def modify_alert(alert_id: int, enabled: bool = None, keyword: str = None):
+    """Update a keyword alert."""
+    ok = await update_keyword_alert(alert_id, enabled=enabled, keyword=keyword)
+    if not ok:
+        return {"error": "Not found"}
+    return {"id": alert_id, "status": "updated"}
+
+
+@router.delete("/alerts/{alert_id}")
+async def remove_alert(alert_id: int):
+    """Delete a keyword alert."""
+    ok = await delete_keyword_alert(alert_id)
+    if not ok:
+        return {"error": "Not found"}
+    return {"id": alert_id, "status": "deleted"}
+
+
+# --- Quality Metrics ---
+
+@router.get("/quality")
+async def quality_overview():
+    """Get aggregate quality metrics across all reports."""
+    overview = await get_quality_overview()
+    return {"quality": overview}
+
+
+@router.get("/quality/{report_id}")
+async def quality_for_report(report_id: int):
+    """Get quality metrics for a specific report."""
+    metrics = await get_quality_metrics(report_id)
+    if not metrics:
+        return {"error": "No quality metrics for this report"}
+    return {"metrics": metrics}

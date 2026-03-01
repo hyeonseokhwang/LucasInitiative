@@ -10,9 +10,12 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+from fastapi.responses import JSONResponse
 from config import HOST, PORT, STATIC_DIR
 from routers import chat, models, monitor, tasks, schedule, expense, usage, reports, agents, realestate, notifications, logs, export, inputhistory
 from routers import research as research_router
+from routers import trends as trends_router
+from routers import dashboard as dashboard_router
 from ws.handler import router as ws_router, manager as ws_manager
 from services.db_service import init_db, close_db
 from services.monitor_service import monitor as monitor_svc
@@ -22,6 +25,7 @@ from services.scheduler_service import scheduler
 from services.report_service import generate_daily_report
 from services.collector_service import collector
 from services.research_service import research_engine
+from services.research_enhanced_service import run_scheduled_research
 from services import telegram_service
 
 
@@ -42,7 +46,8 @@ async def lifespan(app: FastAPI):
 
     # Register and start scheduler
     scheduler.register("daily_report", interval_hours=24, func=generate_daily_report)
-    print("[Lucas AI] Starting scheduler (daily report every 24h)...")
+    scheduler.register("research_schedule", interval_hours=12, func=run_scheduled_research)
+    print("[Lucas AI] Starting scheduler (daily report 24h, research schedule 12h)...")
     scheduler_task = asyncio.create_task(scheduler.loop())
 
     # Start background collector
@@ -78,6 +83,28 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Lucas AI Dashboard", lifespan=lifespan)
 
+# Global exception handler — catch unhandled errors gracefully
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    error_msg = str(exc)
+    print(f"[Lucas AI] Unhandled error on {request.url.path}: {error_msg}")
+    traceback.print_exc()
+    # Log to notifications (best-effort)
+    try:
+        from services.notification_service import notify_system_error
+        await notify_system_error(request.url.path, error_msg[:500])
+    except Exception:
+        pass
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error", "detail": error_msg[:200], "path": request.url.path},
+    )
+
+# Middleware — API key auth (pass-through if DASHBOARD_API_KEY not set)
+from middleware.auth import APIKeyMiddleware
+app.add_middleware(APIKeyMiddleware)
+
 # API routes
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(models.router, prefix="/api/models", tags=["models"])
@@ -94,6 +121,8 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["not
 app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
 app.include_router(inputhistory.router, prefix="/api/inputhistory", tags=["inputhistory"])
+app.include_router(trends_router.router, prefix="/api/trends", tags=["trends"])
+app.include_router(dashboard_router.router, prefix="/api/dashboard", tags=["dashboard"])
 
 # WebSocket
 app.include_router(ws_router)
@@ -107,6 +136,20 @@ async def health():
         "service": "Lucas AI Dashboard",
         "ws_clients": ws_manager.count,
     }
+
+
+# Data integrity check
+@app.get("/api/integrity")
+async def integrity_check():
+    from services.integrity_checker import check_integrity
+    return await check_integrity()
+
+
+# Structured log stats
+@app.get("/api/error-log")
+async def error_log():
+    from services.structured_logger import structured_logger
+    return structured_logger.get_stats()
 
 
 # Serve React frontend (only if built)

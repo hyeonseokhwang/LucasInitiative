@@ -228,7 +228,7 @@ class Collector:
 
     def __init__(self):
         self._running = False
-        self._stats = {"stock_runs": 0, "news_runs": 0, "realestate_runs": 0, "realestate_data_runs": 0, "signal_runs": 0, "sentiment_runs": 0, "started_at": None}
+        self._stats = {"stock_runs": 0, "news_runs": 0, "realestate_runs": 0, "realestate_data_runs": 0, "signal_runs": 0, "sentiment_runs": 0, "rss_news_runs": 0, "started_at": None}
 
     async def start(self):
         """Start all collection loops."""
@@ -244,6 +244,7 @@ class Collector:
         print("[Collector]   Real estate data: every 6 hours")
         print("[Collector]   Signal scan: every 2 hours")
         print("[Collector]   Sentiment analysis: every 4 hours")
+        print("[Collector]   RSS news feed: every 15 minutes")
 
         await asyncio.gather(
             self._stock_loop(),
@@ -252,6 +253,7 @@ class Collector:
             self._realestate_data_loop(),
             self._signal_loop(),
             self._sentiment_loop(),
+            self._rss_news_loop(),
         )
 
     async def _stock_loop(self):
@@ -352,6 +354,52 @@ class Collector:
                 await agent_manager.update_status("stock", "idle", "", f"Sentiment error: {e}")
 
             await asyncio.sleep(14400)  # 4 hours
+
+    async def _rss_news_loop(self):
+        """Crawl RSS news feeds every 15 minutes and check keyword alerts."""
+        from services.agent_service import agent_manager
+        await asyncio.sleep(45)  # Wait 45s after startup
+        while self._running:
+            try:
+                await agent_manager.update_status("stock", "working", "Crawling RSS news feeds...")
+                from services.naver_crawler_service import crawl_all_news_categories
+                results = await crawl_all_news_categories()
+                total_new = sum(results.values())
+                self._stats["rss_news_runs"] += 1
+
+                # Check keyword alerts for new items
+                if total_new > 0:
+                    try:
+                        from services.research_enhanced_service import check_keyword_alerts
+                        # Get the most recent items we just inserted
+                        recent = await fetch_all(
+                            """SELECT id, title, content FROM collected_items
+                               WHERE created_at > datetime('now', '-1 minute')
+                               ORDER BY id DESC LIMIT ?""",
+                            (total_new,),
+                        )
+                        for item in recent:
+                            await check_keyword_alerts(
+                                item["title"],
+                                item.get("content") or "",
+                                0,  # no report_id for news items
+                            )
+                    except Exception as e:
+                        print(f"[Collector] RSS keyword alert check error: {e}")
+
+                    await ws_manager.broadcast({
+                        "type": "collector_update",
+                        "data": {"category": "rss_news", "new_items": total_new, "breakdown": results},
+                    })
+
+                status_msg = f"RSS news: {total_new} new (run #{self._stats['rss_news_runs']})"
+                await agent_manager.update_status("stock", "idle", "", status_msg)
+                print(f"[Collector] {status_msg}")
+            except Exception as e:
+                print(f"[Collector] RSS news error: {e}")
+                await agent_manager.update_status("stock", "idle", "", f"RSS error: {e}")
+
+            await asyncio.sleep(900)  # 15 minutes
 
     def get_stats(self) -> dict:
         return {**self._stats, "running": self._running}
