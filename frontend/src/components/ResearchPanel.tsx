@@ -66,6 +66,14 @@ const statusDot: Record<string, string> = {
 
 // --- Filter Bar ---
 
+const RESEARCH_CATEGORIES = [
+  { value: '', label: 'All' },
+  { value: 'real-estate', label: 'Real Estate' },
+  { value: 'stock', label: 'Stock' },
+  { value: 'general', label: 'General' },
+  { value: 'tech', label: 'Tech' },
+]
+
 function FilterBar({ filters, onChange }: {
   filters: FilterState
   onChange: (f: FilterState) => void
@@ -89,6 +97,38 @@ function FilterBar({ filters, onChange }: {
             placeholder="Search title, summary..."
             className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
           />
+        </div>
+
+        {/* Category */}
+        <div>
+          <label className="text-[10px] text-slate-500 uppercase mb-1 block">Category</label>
+          <select
+            value={filters.category}
+            onChange={e => onChange({ ...filters, category: e.target.value })}
+            className="bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
+          >
+            {RESEARCH_CATEGORIES.map(c => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Bookmarked Only */}
+        <div>
+          <label className="text-[10px] text-slate-500 uppercase mb-1 block">Bookmarks</label>
+          <button
+            onClick={() => onChange({ ...filters, bookmarkedOnly: !filters.bookmarkedOnly })}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+              filters.bookmarkedOnly
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                : 'bg-slate-900/60 text-slate-400 border-slate-600/50 hover:text-white'
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill={filters.bookmarkedOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            Starred
+          </button>
         </div>
 
         {/* Date Range */}
@@ -134,9 +174,9 @@ function FilterBar({ filters, onChange }: {
         </div>
 
         {/* Clear */}
-        {(filters.keyword || filters.dateFrom || filters.dateTo || filters.confMin > 0 || filters.confMax < 100) && (
+        {(filters.keyword || filters.dateFrom || filters.dateTo || filters.confMin > 0 || filters.confMax < 100 || filters.category || filters.bookmarkedOnly) && (
           <button
-            onClick={() => onChange({ keyword: '', dateFrom: '', dateTo: '', confMin: 0, confMax: 100 })}
+            onClick={() => onChange(defaultFilters)}
             className="text-xs text-slate-400 hover:text-white transition-colors px-2 py-1.5"
           >
             Clear
@@ -149,10 +189,12 @@ function FilterBar({ filters, onChange }: {
 
 // --- Inline Expandable Report ---
 
-function ReportItem({ report, isExpanded, onToggle }: {
+function ReportItem({ report, isExpanded, onToggle, isBookmarked, onBookmarkToggle }: {
   report: ResearchReport
   isExpanded: boolean
   onToggle: () => void
+  isBookmarked: boolean
+  onBookmarkToggle: () => void
 }) {
   const [evidence, setEvidence] = useState<ResearchEvidence[]>([])
   const [loading, setLoading] = useState(false)
@@ -175,10 +217,21 @@ function ReportItem({ report, isExpanded, onToggle }: {
   return (
     <div className={`transition-all ${isExpanded ? 'bg-slate-700/20' : 'hover:bg-slate-700/15'}`}>
       {/* Collapsed Row */}
-      <button
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center gap-4 text-left"
-      >
+      <div className="w-full px-4 py-3 flex items-center gap-4 text-left">
+        {/* Bookmark Star */}
+        <button
+          onClick={e => { e.stopPropagation(); onBookmarkToggle() }}
+          className={`shrink-0 transition-colors ${isBookmarked ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'}`}
+          title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        </button>
+        <button
+          onClick={onToggle}
+          className="flex-1 flex items-center gap-4 min-w-0"
+        >
         <svg
           width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           className={`text-slate-500 transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
@@ -207,7 +260,8 @@ function ReportItem({ report, isExpanded, onToggle }: {
             {report.contradictions > 0 && <span className="text-red-400 ml-1">| {report.contradictions} conflicts</span>}
           </div>
         </div>
-      </button>
+        </button>
+      </div>
 
       {/* Expanded Detail */}
       {isExpanded && (
@@ -390,9 +444,23 @@ interface FilterState {
   dateTo: string
   confMin: number
   confMax: number
+  category: string
+  bookmarkedOnly: boolean
 }
 
-const defaultFilters: FilterState = { keyword: '', dateFrom: '', dateTo: '', confMin: 0, confMax: 100 }
+const defaultFilters: FilterState = { keyword: '', dateFrom: '', dateTo: '', confMin: 0, confMax: 100, category: '', bookmarkedOnly: false }
+
+// Bookmark helpers (localStorage)
+const BOOKMARK_KEY = 'lucas-research-bookmarks'
+function loadBookmarks(): Set<number> {
+  try {
+    const raw = localStorage.getItem(BOOKMARK_KEY)
+    return raw ? new Set(JSON.parse(raw)) : new Set()
+  } catch { return new Set() }
+}
+function saveBookmarks(ids: Set<number>) {
+  localStorage.setItem(BOOKMARK_KEY, JSON.stringify([...ids]))
+}
 
 // --- Main Panel ---
 
@@ -405,7 +473,17 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const [showFilters, setShowFilters] = useState(false)
-  const [activeTab, setActiveTab] = useState<'reports' | 'timeline'>('reports')
+  const [activeTab, setActiveTab] = useState<'reports' | 'timeline' | 'bookmarks'>('reports')
+  const [bookmarks, setBookmarks] = useState<Set<number>>(() => loadBookmarks())
+
+  const toggleBookmark = (id: number) => {
+    setBookmarks(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      saveBookmarks(next)
+      return next
+    })
+  }
 
   // Load data
   useEffect(() => {
@@ -445,25 +523,43 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
   // Filtered reports
   const filtered = useMemo(() => {
     return reports.filter(r => {
+      if (filters.bookmarkedOnly && !bookmarks.has(r.id)) return false
       if (filters.keyword) {
         const kw = filters.keyword.toLowerCase()
         if (!r.title.toLowerCase().includes(kw) && !r.summary.toLowerCase().includes(kw)) return false
+      }
+      if (filters.category) {
+        const title = r.title.toLowerCase()
+        const summary = r.summary.toLowerCase()
+        const text = title + ' ' + summary
+        const catMatch: Record<string, () => boolean> = {
+          'real-estate': () => /부동산|아파트|매매|전세|월세|real.?estate|apartment|realestate/i.test(text),
+          'stock': () => /주식|종목|포트폴리오|stock|share|equity|nasdaq|kospi/i.test(text),
+          'tech': () => /기술|개발|프로그래밍|ai|ml|tech|software|framework|react|spring/i.test(text),
+          'general': () => true,
+        }
+        if (filters.category !== 'general' && catMatch[filters.category] && !catMatch[filters.category]()) return false
       }
       if (filters.dateFrom) {
         if (new Date(r.created_at) < new Date(filters.dateFrom)) return false
       }
       if (filters.dateTo) {
         const to = new Date(filters.dateTo)
-        to.setDate(to.getDate() + 1) // include end date
+        to.setDate(to.getDate() + 1)
         if (new Date(r.created_at) >= to) return false
       }
       const confPct = r.confidence_avg * 100
       if (confPct < filters.confMin || confPct > filters.confMax) return false
       return true
     })
-  }, [reports, filters])
+  }, [reports, filters, bookmarks])
 
-  const hasActiveFilters = filters.keyword || filters.dateFrom || filters.dateTo || filters.confMin > 0 || filters.confMax < 100
+  // Bookmarked reports for dedicated tab
+  const bookmarkedReports = useMemo(() => {
+    return reports.filter(r => bookmarks.has(r.id))
+  }, [reports, bookmarks])
+
+  const hasActiveFilters = filters.keyword || filters.dateFrom || filters.dateTo || filters.confMin > 0 || filters.confMax < 100 || filters.category || filters.bookmarkedOnly
 
   return (
     <div className="space-y-4">
@@ -573,6 +669,17 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
             Reports ({filtered.length}{hasActiveFilters ? `/${reports.length}` : ''})
           </button>
           <button
+            onClick={() => setActiveTab('bookmarks')}
+            className={`text-xs px-4 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
+              activeTab === 'bookmarks' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-300'
+            }`}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            Bookmarks ({bookmarkedReports.length})
+          </button>
+          <button
             onClick={() => setActiveTab('timeline')}
             className={`text-xs px-4 py-1.5 rounded-md transition-colors ${
               activeTab === 'timeline' ? 'bg-slate-700 text-white font-medium' : 'text-slate-400 hover:text-slate-300'
@@ -638,6 +745,38 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
                   report={report}
                   isExpanded={expandedId === report.id}
                   onToggle={() => setExpandedId(expandedId === report.id ? null : report.id)}
+                  isBookmarked={bookmarks.has(report.id)}
+                  onBookmarkToggle={() => toggleBookmark(report.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'bookmarks' ? (
+        <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-700/50 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-white flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" className="text-amber-400">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              Bookmarked Reports
+            </h3>
+            <span className="text-xs text-slate-500">{bookmarkedReports.length} saved</span>
+          </div>
+          {bookmarkedReports.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-slate-500">
+              No bookmarked reports yet. Click the star icon on any report to save it here.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-700/30">
+              {bookmarkedReports.map(report => (
+                <ReportItem
+                  key={report.id}
+                  report={report}
+                  isExpanded={expandedId === report.id}
+                  onToggle={() => setExpandedId(expandedId === report.id ? null : report.id)}
+                  isBookmarked={true}
+                  onBookmarkToggle={() => toggleBookmark(report.id)}
                 />
               ))}
             </div>
