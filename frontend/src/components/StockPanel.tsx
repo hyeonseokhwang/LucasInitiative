@@ -429,12 +429,39 @@ export function StockPanel() {
     return map
   }, [filteredStocks, sectorFilter, search])
 
+  // Portfolio summary stats
+  const portfolioStats = useMemo(() => {
+    const valid = stocks.filter(st => !('error' in st) && st.price > 0)
+    const gainers = valid.filter(st => st.change_pct > 0)
+    const losers = valid.filter(st => st.change_pct < 0)
+    const unchanged = valid.filter(st => st.change_pct === 0)
+    const topGainers = [...valid].sort((a, b) => b.change_pct - a.change_pct).slice(0, 3)
+    const topLosers = [...valid].sort((a, b) => a.change_pct - b.change_pct).slice(0, 3)
+    const avgChange = valid.length > 0 ? valid.reduce((s, st) => s + st.change_pct, 0) / valid.length : 0
+    const sectorMap = new Map<string, { count: number; avgChange: number }>()
+    valid.forEach(st => {
+      const key = st.sector || 'Other'
+      const prev = sectorMap.get(key) || { count: 0, avgChange: 0 }
+      sectorMap.set(key, {
+        count: prev.count + 1,
+        avgChange: (prev.avgChange * prev.count + st.change_pct) / (prev.count + 1),
+      })
+    })
+    return { total: valid.length, gainers: gainers.length, losers: losers.length, unchanged: unchanged.length, topGainers, topLosers, avgChange, sectorMap }
+  }, [stocks])
+
   const changeCls = (pct: number) => pct > 0 ? 'text-red-400' : pct < 0 ? 'text-blue-400' : 'text-slate-400'
   const changePrefix = (pct: number) => pct > 0 ? '+' : ''
 
+  const isTopMover = (st: StockItem) => {
+    return portfolioStats.topGainers.some(g => g.symbol === st.symbol) || portfolioStats.topLosers.some(l => l.symbol === st.symbol)
+  }
+
   const renderStockRow = (st: StockItem) => (
     <tr key={st.symbol} onClick={() => setSelected(st)}
-      className="border-b border-slate-700/20 hover:bg-slate-700/30 cursor-pointer transition">
+      className={`border-b border-slate-700/20 hover:bg-slate-700/30 cursor-pointer transition ${
+        isTopMover(st) ? (st.change_pct > 0 ? 'bg-red-500/5' : st.change_pct < 0 ? 'bg-blue-500/5' : '') : ''
+      }`}>
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-1.5">
           <span className="text-white font-medium">{st.name}</span>
@@ -558,6 +585,59 @@ export function StockPanel() {
           ))}
         </div>
       </div>
+
+      {/* Portfolio Summary Cards */}
+      {stocks.length > 0 && (
+        <div className="px-4 py-3 border-b border-slate-700/50">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="bg-slate-900/50 rounded-lg p-2.5 text-center">
+              <div className="text-lg font-bold text-white">{portfolioStats.total}</div>
+              <div className="text-[10px] text-slate-500 uppercase">Tracked</div>
+            </div>
+            <div className="bg-slate-900/50 rounded-lg p-2.5 text-center">
+              <div className="text-lg font-bold text-red-400">{portfolioStats.gainers}</div>
+              <div className="text-[10px] text-slate-500 uppercase">Gainers</div>
+            </div>
+            <div className="bg-slate-900/50 rounded-lg p-2.5 text-center">
+              <div className="text-lg font-bold text-blue-400">{portfolioStats.losers}</div>
+              <div className="text-[10px] text-slate-500 uppercase">Losers</div>
+            </div>
+            <div className="bg-slate-900/50 rounded-lg p-2.5 text-center">
+              <div className={`text-lg font-bold ${changeCls(portfolioStats.avgChange)}`}>
+                {changePrefix(portfolioStats.avgChange)}{portfolioStats.avgChange.toFixed(2)}%
+              </div>
+              <div className="text-[10px] text-slate-500 uppercase">Avg Change</div>
+            </div>
+          </div>
+
+          {/* Top Movers */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Top Gainers */}
+            <div className="bg-red-500/5 rounded-lg p-2.5 border border-red-500/10">
+              <div className="text-[10px] text-red-400 uppercase tracking-wider mb-1.5 font-medium">Top Gainers</div>
+              {portfolioStats.topGainers.map(st => (
+                <div key={st.symbol} className="flex items-center justify-between py-0.5 cursor-pointer hover:bg-red-500/5 rounded px-1"
+                  onClick={() => setSelected(st)}>
+                  <span className="text-xs text-white truncate">{st.name}</span>
+                  <span className="text-xs text-red-400 font-medium shrink-0 ml-2">+{st.change_pct}%</span>
+                </div>
+              ))}
+            </div>
+            {/* Top Losers */}
+            <div className="bg-blue-500/5 rounded-lg p-2.5 border border-blue-500/10">
+              <div className="text-[10px] text-blue-400 uppercase tracking-wider mb-1.5 font-medium">Top Losers</div>
+              {portfolioStats.topLosers.map(st => (
+                <div key={st.symbol} className="flex items-center justify-between py-0.5 cursor-pointer hover:bg-blue-500/5 rounded px-1"
+                  onClick={() => setSelected(st)}>
+                  <span className="text-xs text-white truncate">{st.name}</span>
+                  <span className="text-xs text-blue-400 font-medium shrink-0 ml-2">{st.change_pct}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         <table className="w-full text-sm">
