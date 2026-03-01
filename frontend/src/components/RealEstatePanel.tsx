@@ -65,6 +65,18 @@ type SortDir = 'asc' | 'desc'
 
 const PAGE_SIZE = 20
 
+// Deal favorites (localStorage)
+const FAV_DEALS_KEY = 'lucas-re-favorites'
+function loadFavDeals(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FAV_DEALS_KEY)
+    return raw ? new Set(JSON.parse(raw)) : new Set()
+  } catch { return new Set() }
+}
+function saveFavDeals(ids: Set<string>) {
+  localStorage.setItem(FAV_DEALS_KEY, JSON.stringify([...ids]))
+}
+
 export function RealEstatePanel() {
   const { locale, t } = useLocale()
   const r = t.re
@@ -109,6 +121,20 @@ export function RealEstatePanel() {
   // Price range filter (in 만원 units)
   const [priceMin, setPriceMin] = useState('')
   const [priceMax, setPriceMax] = useState('')
+
+  // Favorites
+  const [favDeals, setFavDeals] = useState<Set<string>>(() => loadFavDeals())
+  const [showFavOnly, setShowFavOnly] = useState(false)
+
+  const toggleFav = (id: number) => {
+    const key = String(id)
+    setFavDeals(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      saveFavDeals(next)
+      return next
+    })
+  }
 
   useEffect(() => {
     api.reDistricts().then(d => {
@@ -190,9 +216,12 @@ export function RealEstatePanel() {
 
   useEffect(() => { if (tab === 'deals') loadDeals() }, [tab, loadDeals])
 
-  // Filter deals by apt search and price range, then sort
+  // Filter deals by apt search, price range, and favorites
   const sortedDeals = useMemo(() => {
     let filtered = deals
+    if (showFavOnly) {
+      filtered = filtered.filter(d => favDeals.has(String(d.id)))
+    }
     if (aptSearch) {
       const q = aptSearch.toLowerCase()
       filtered = filtered.filter(d => d.apt_name?.toLowerCase().includes(q))
@@ -209,7 +238,7 @@ export function RealEstatePanel() {
       return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av))
     })
     return sorted
-  }, [deals, sortKey, sortDir, aptSearch, priceMin, priceMax])
+  }, [deals, sortKey, sortDir, aptSearch, priceMin, priceMax, showFavOnly, favDeals])
 
   const pagedDeals = useMemo(() => {
     return sortedDeals.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -550,6 +579,17 @@ export function RealEstatePanel() {
                 className="text-xs px-3 py-1 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition">
                 {r.refresh}
               </button>
+              <button onClick={() => setShowFavOnly(!showFavOnly)}
+                className={`text-xs px-3 py-1 rounded flex items-center gap-1 transition ${
+                  showFavOnly
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    : 'bg-slate-700/30 text-slate-400 hover:text-white border border-slate-600/30'
+                }`}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill={showFavOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                {favDeals.size > 0 ? `Favorites (${favDeals.size})` : 'Favorites'}
+              </button>
               <span className="text-xs text-slate-500 ml-auto">{sortedDeals.length} {r.deals_count}</span>
             </div>
 
@@ -602,6 +642,7 @@ export function RealEstatePanel() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-slate-400 border-b border-slate-700">
+                        <th className="px-2 py-2 w-8"></th>
                         <th className="px-3 py-2 text-left cursor-pointer hover:text-white select-none" onClick={() => handleSort('deal_date')}>
                           {r.date}{sortIcon('deal_date')}
                         </th>
@@ -625,7 +666,15 @@ export function RealEstatePanel() {
                     </thead>
                     <tbody>
                       {pagedDeals.map(d => (
-                        <tr key={d.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                        <tr key={d.id} className={`border-b border-slate-700/50 hover:bg-slate-700/30 ${favDeals.has(String(d.id)) ? 'bg-amber-500/5' : ''}`}>
+                          <td className="px-2 py-2">
+                            <button onClick={() => toggleFav(d.id)}
+                              className={`transition-colors ${favDeals.has(String(d.id)) ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'}`}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill={favDeals.has(String(d.id)) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                            </button>
+                          </td>
                           <td className="px-3 py-2 text-slate-400">{d.deal_date}</td>
                           <td className="px-3 py-2 text-slate-300">{d.district} {d.dong || ''}</td>
                           <td className="px-3 py-2 text-white font-medium truncate max-w-[120px]">{d.apt_name || '-'}</td>
