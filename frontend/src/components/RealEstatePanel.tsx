@@ -5,6 +5,7 @@ import {
   commonGridProps, commonTooltipProps,
 } from '../lib/chartTheme'
 import { useLocale } from '../hooks/useLocale'
+import { RefreshIndicator } from './RefreshIndicator'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
@@ -135,6 +136,12 @@ export function RealEstatePanel() {
       return next
     })
   }
+
+  const refreshCurrentTab = useCallback(async () => {
+    if (tab === 'trends') await loadTrends()
+    else if (tab === 'compare') await loadCompare()
+    else if (tab === 'deals') await loadDeals()
+  }, [tab])
 
   useEffect(() => {
     api.reDistricts().then(d => {
@@ -290,7 +297,10 @@ export function RealEstatePanel() {
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-700/50">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white font-medium">{r.title}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-white font-medium">{r.title}</h2>
+            <RefreshIndicator onRefresh={refreshCurrentTab} intervalSec={60} />
+          </div>
           <button onClick={() => downloadExport('/api/export/realestate?format=csv', 'realestate.csv')}
             className="px-2 py-1 text-[10px] rounded bg-slate-700/60 text-slate-400 hover:text-white hover:bg-slate-600 transition" title="Export CSV">
             CSV

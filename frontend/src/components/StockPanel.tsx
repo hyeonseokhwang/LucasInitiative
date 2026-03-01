@@ -10,6 +10,7 @@ import { api, downloadExport } from '../lib/api'
 import { ACCENT, CANDLE, SERIES_PALETTE, lwcLayout, lwcGrid, lwcScaleBorder } from '../lib/chartTheme'
 import { useLocale } from '../hooks/useLocale'
 import { SignalBadges } from './SignalPanel'
+import { RefreshIndicator } from './RefreshIndicator'
 
 interface StockItem {
   symbol: string
@@ -394,11 +395,18 @@ export function StockPanel() {
   const [sectorFilter, setSectorFilter] = useState('')
   const [signalList, setSignalList] = useState<any[]>([])
 
-  useEffect(() => {
-    api.stocks(filter).then(d => setStocks(d.stocks || []))
-    api.indices().then(d => setIndices(d.indices || []))
-    api.signals(100).then(d => setSignalList(d.signals || [])).catch(() => {})
+  const loadStockData = useCallback(async () => {
+    const [stockRes, idxRes, sigRes] = await Promise.allSettled([
+      api.stocks(filter),
+      api.indices(),
+      api.signals(100),
+    ])
+    if (stockRes.status === 'fulfilled') setStocks(stockRes.value.stocks || [])
+    if (idxRes.status === 'fulfilled') setIndices(idxRes.value.indices || [])
+    if (sigRes.status === 'fulfilled') setSignalList(sigRes.value.signals || [])
   }, [filter])
+
+  useEffect(() => { loadStockData() }, [loadStockData])
 
   // Extract unique sectors from stock data
   const sectors = useMemo(() => {
@@ -650,7 +658,10 @@ export function StockPanel() {
     <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-700/50">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white font-medium">{s.title}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-white font-medium">{s.title}</h2>
+            <RefreshIndicator onRefresh={loadStockData} intervalSec={30} />
+          </div>
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               {(['all', 'kr', 'us'] as const).map(f => (

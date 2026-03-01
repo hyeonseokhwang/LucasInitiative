@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell,
 } from 'recharts'
 import { fetchJson, downloadExport } from '../lib/api'
 import { CONFIDENCE_COLORS, commonAxisProps, commonGridProps, commonTooltipProps } from '../lib/chartTheme'
+import { RefreshIndicator } from './RefreshIndicator'
 import type { ResearchReport, ResearchEvidence, ResearchTopic } from '../types'
 
 interface Props {
@@ -502,21 +503,25 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
     } catch { /* ignore */ }
   }
 
-  // Load data
-  useEffect(() => {
-    fetchJson<{ reports: ResearchReport[] }>('/api/research/reports').then(d => setReports(d.reports || []))
-    fetchJson<{ engine: any }>('/api/research/status').then(d => setEngineStatus(d.engine))
-    fetchJson<{ topics: ResearchTopic[] }>('/api/research/topics').then(d => setTopics(d.topics || []))
+  // Refresh all data
+  const loadAllData = useCallback(async () => {
+    const [rr, sr, tr] = await Promise.allSettled([
+      fetchJson<{ reports: ResearchReport[] }>('/api/research/reports'),
+      fetchJson<{ engine: any }>('/api/research/status'),
+      fetchJson<{ topics: ResearchTopic[] }>('/api/research/topics'),
+    ])
+    if (rr.status === 'fulfilled') setReports(rr.value.reports || [])
+    if (sr.status === 'fulfilled') setEngineStatus(sr.value.engine)
+    if (tr.status === 'fulfilled') setTopics(tr.value.topics || [])
   }, [])
+
+  // Load data
+  useEffect(() => { loadAllData() }, [loadAllData])
 
   // Refresh on research complete
   useEffect(() => {
-    if (researchComplete) {
-      fetchJson<{ reports: ResearchReport[] }>('/api/research/reports').then(d => setReports(d.reports || []))
-      fetchJson<{ engine: any }>('/api/research/status').then(d => setEngineStatus(d.engine))
-      fetchJson<{ topics: ResearchTopic[] }>('/api/research/topics').then(d => setTopics(d.topics || []))
-    }
-  }, [researchComplete])
+    if (researchComplete) loadAllData()
+  }, [researchComplete, loadAllData])
 
   // Update engine status on research updates
   useEffect(() => {
@@ -578,6 +583,7 @@ export function ResearchPanel({ researchUpdate, researchComplete }: Props) {
             <span className="text-xs text-slate-400">
               {engineStatus?.running ? 'Active' : 'Stopped'}
             </span>
+            <RefreshIndicator onRefresh={loadAllData} intervalSec={45} />
           </div>
           <div className="flex items-center gap-4 text-xs text-slate-400">
             <span>Cycles: {engineStatus?.cycles || 0}</span>
