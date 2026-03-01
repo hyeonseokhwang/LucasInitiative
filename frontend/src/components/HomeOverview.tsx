@@ -1,9 +1,43 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '../lib/api'
 import { CHART_COLORS } from '../lib/chartTheme'
 import { useLocale } from '../hooks/useLocale'
 import { formatNumber, formatCurrency } from '../lib/i18n'
 import type { SystemSnapshot } from '../types'
+
+// --- Widget System ---
+const WIDGET_ORDER_KEY = 'lucas-home-widget-order'
+const DEFAULT_WIDGET_ORDER = ['system', 'services', 'commander', 'activity', 'challenges', 'market', 'research', 'cost', 'quicklinks']
+
+function loadWidgetOrder(): string[] {
+  try {
+    const raw = localStorage.getItem(WIDGET_ORDER_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      // Merge any new widgets that aren't in saved order
+      const merged = [...parsed]
+      DEFAULT_WIDGET_ORDER.forEach(w => { if (!merged.includes(w)) merged.push(w) })
+      return merged
+    }
+  } catch { /* ignore */ }
+  return [...DEFAULT_WIDGET_ORDER]
+}
+
+function saveWidgetOrder(order: string[]) {
+  localStorage.setItem(WIDGET_ORDER_KEY, JSON.stringify(order))
+}
+
+function WidgetHandle() {
+  return (
+    <div className="cursor-grab active:cursor-grabbing text-slate-600 hover:text-slate-400 transition-colors p-1" title="Drag to reorder">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="5" cy="5" r="2" /><circle cx="12" cy="5" r="2" /><circle cx="19" cy="5" r="2" />
+        <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+        <circle cx="5" cy="19" r="2" /><circle cx="12" cy="19" r="2" /><circle cx="19" cy="19" r="2" />
+      </svg>
+    </div>
+  )
+}
 
 interface Props {
   metrics: SystemSnapshot | null
@@ -97,6 +131,41 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
   const [notiOpen, setNotiOpen] = useState(false)
   const notiRef = useRef<HTMLDivElement>(null)
   const [researchCount, setResearchCount] = useState(0)
+
+  // Widget system
+  const [widgetOrder, setWidgetOrder] = useState<string[]>(() => loadWidgetOrder())
+  const [dragWidget, setDragWidget] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
+
+  const handleDragStart = useCallback((widgetId: string) => {
+    setDragWidget(widgetId)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, widgetId: string) => {
+    e.preventDefault()
+    if (dragWidget && dragWidget !== widgetId) setDragOver(widgetId)
+  }, [dragWidget])
+
+  const handleDrop = useCallback((targetId: string) => {
+    if (!dragWidget || dragWidget === targetId) return
+    setWidgetOrder(prev => {
+      const next = [...prev]
+      const fromIdx = next.indexOf(dragWidget)
+      const toIdx = next.indexOf(targetId)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, dragWidget)
+      saveWidgetOrder(next)
+      return next
+    })
+    setDragWidget(null)
+    setDragOver(null)
+  }, [dragWidget])
+
+  const handleDragEnd = useCallback(() => {
+    setDragWidget(null)
+    setDragOver(null)
+  }, [])
 
   useEffect(() => {
     Promise.allSettled([
@@ -234,10 +303,33 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
     deadline: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   }
 
+  // Widget order helper
+  const widgetIdx = (id: string) => widgetOrder.indexOf(id)
+
+  const wrapWidget = (id: string, children: React.ReactNode) => (
+    <div
+      key={id}
+      draggable
+      onDragStart={() => handleDragStart(id)}
+      onDragOver={e => handleDragOver(e, id)}
+      onDrop={() => handleDrop(id)}
+      onDragEnd={handleDragEnd}
+      style={{ order: widgetIdx(id) }}
+      className={`relative group/widget transition-all ${dragOver === id ? 'ring-2 ring-blue-500/50 ring-offset-2 ring-offset-slate-900 rounded-xl' : ''} ${dragWidget === id ? 'opacity-50' : ''}`}
+    >
+      <div className="absolute top-2 left-2 opacity-0 group-hover/widget:opacity-100 transition-opacity z-10"><WidgetHandle /></div>
+      {children}
+    </div>
+  )
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Notification Bell */}
-      <div className="flex items-center justify-end" ref={notiRef}>
+      <div className="flex items-center justify-between" ref={notiRef} style={{ order: -1 }}>
+        <div className="text-[10px] text-slate-600 flex items-center gap-2">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          Drag widgets to reorder
+        </div>
         <div className="relative">
           <button
             onClick={() => setNotiOpen(prev => !prev)}
@@ -291,42 +383,43 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
         </div>
       </div>
 
-      {/* System Status */}
-      <div
-        onClick={() => onNavigate('dashboard')}
-        className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 cursor-pointer
-          hover:border-blue-500/50 hover:bg-slate-800/80 transition-all group"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-300">{h.systemStatus}</h3>
-          <span className="text-xs text-slate-500 group-hover:text-slate-400">{h.dashboard} &rarr;</span>
+      {/* System Metrics */}
+      {wrapWidget('system',
+        <div
+          onClick={() => onNavigate('dashboard')}
+          className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 cursor-pointer hover:border-blue-500/50 hover:bg-slate-800/80 transition-all group"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-300">{h.systemStatus}</h3>
+            <span className="text-xs text-slate-500 group-hover:text-slate-400">{h.dashboard} &rarr;</span>
+          </div>
+          {metrics ? (
+            <div className="flex items-center justify-around flex-wrap gap-3">
+              <MiniGauge percent={metrics.cpu.percent} label="CPU" color={CHART_COLORS.cpu} />
+              <MiniGauge percent={metrics.gpu.util_percent} label="GPU" color={CHART_COLORS.gpu} />
+              <MiniGauge percent={metrics.ram.percent} label="RAM" color={CHART_COLORS.ram} />
+              <MiniGauge percent={vramPercent} label="VRAM" color={CHART_COLORS.vram} />
+              <div className="flex flex-col items-center gap-1 text-center">
+                <span className="text-lg font-bold text-white">{metrics.gpu.temp_c}°C</span>
+                <span className="text-xs text-slate-400">{h.gpuTemp}</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 text-center">
+                <span className={`text-lg font-bold ${metrics.ollama?.running ? 'text-emerald-400' : 'text-slate-500'}`}>
+                  {metrics.ollama?.running ? 'ON' : 'OFF'}
+                </span>
+                <span className="text-xs text-slate-400">Ollama</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-4 justify-around">
+              {[1,2,3,4].map(i => <div key={i} className="w-16 h-16 rounded-full bg-slate-700/50 animate-pulse" />)}
+            </div>
+          )}
         </div>
-        {metrics ? (
-          <div className="flex items-center justify-around flex-wrap gap-3">
-            <MiniGauge percent={metrics.cpu.percent} label="CPU" color={CHART_COLORS.cpu} />
-            <MiniGauge percent={metrics.gpu.util_percent} label="GPU" color={CHART_COLORS.gpu} />
-            <MiniGauge percent={metrics.ram.percent} label="RAM" color={CHART_COLORS.ram} />
-            <MiniGauge percent={vramPercent} label="VRAM" color={CHART_COLORS.vram} />
-            <div className="flex flex-col items-center gap-1 text-center">
-              <span className="text-lg font-bold text-white">{metrics.gpu.temp_c}°C</span>
-              <span className="text-xs text-slate-400">{h.gpuTemp}</span>
-            </div>
-            <div className="flex flex-col items-center gap-1 text-center">
-              <span className={`text-lg font-bold ${metrics.ollama?.running ? 'text-emerald-400' : 'text-slate-500'}`}>
-                {metrics.ollama?.running ? 'ON' : 'OFF'}
-              </span>
-              <span className="text-xs text-slate-400">Ollama</span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-4 justify-around">
-            {[1,2,3,4].map(i => <div key={i} className="w-16 h-16 rounded-full bg-slate-700/50 animate-pulse" />)}
-          </div>
-        )}
-      </div>
+      )}
 
-      {/* Service Status */}
-      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      {/* Service Health */}
+      {wrapWidget('services', <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-slate-300">{h.serviceStatus}</h3>
           <span className="text-xs text-slate-500">
@@ -352,10 +445,10 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             )
           })}
         </div>
-      </div>
+      </div>)}
 
       {/* Commander Status + Recent Decisions */}
-      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      {wrapWidget('commander', <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-semibold text-slate-300">{h.commanderStatus}</h3>
@@ -412,10 +505,10 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             <div className="text-xs text-slate-500 py-3 text-center">{h.noDecisions}</div>
           )}
         </div>
-      </div>
+      </div>)}
 
       {/* Today's Activity Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {wrapWidget('activity', <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-lg">
             📋
@@ -455,10 +548,10 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             <div className="text-xs text-slate-400">{h.online}</div>
           </div>
         </div>
-      </div>
+      </div>)}
 
       {/* Challenge Widget */}
-      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      {wrapWidget('challenges', <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-slate-300">{c.title}</h3>
           {challenges.length > 0 && (
@@ -543,10 +636,10 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             })}
           </div>
         )}
-      </div>
+      </div>)}
 
       {/* Grid: 2 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {wrapWidget('market', <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Stock Summary */}
         <SectionCard title={h.stocksPortfolio} color="blue" onClick={() => onNavigate('stocks')}>
           {/* Indices */}
@@ -714,10 +807,10 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             <div className="text-xs text-slate-500">{loading ? t.loading : h.noUsageData}</div>
           )}
         </SectionCard>
-      </div>
+      </div>)}
 
       {/* Quick Links Grid */}
-      <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      {wrapWidget('quicklinks', <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
         <h3 className="text-sm font-semibold text-slate-300 mb-4">{h.quickLinks}</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {QUICK_LINKS.map(link => {
@@ -745,7 +838,7 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
             )
           })}
         </div>
-      </div>
+      </div>)}
     </div>
   )
 }
