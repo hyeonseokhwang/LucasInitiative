@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { LocaleContext, loadLocale, saveLocale, useLocale } from './hooks/useLocale'
@@ -38,12 +38,14 @@ import { NotificationBell } from './components/NotificationBell'
 import { PanelWrapper } from './components/PanelWrapper'
 import { GridLayout } from './components/GridLayout'
 import { useLayoutSettings } from './hooks/useLayoutSettings'
+import { ToastProvider, useToast } from './components/ToastContainer'
 
 type View = 'home' | 'company' | 'dashboard' | 'chat' | 'schedule' | 'expense' | 'stocks' | 'portfolio' | 'sectors' | 'realestate' | 'watchlist' | 'reports' | 'research' | 'signals' | 'inputhistory' | 'dailyreport' | 'sentiment' | 'divisions' | 'workers' | 'tokenusage' | 'llmactivity' | 'models' | 'logs' | 'settings'
 
 function AppInner() {
   const { metrics, connected, chatTokens, chatComplete, taskUpdate, agentUpdate, collectorAlert, researchUpdate, researchComplete } = useWebSocket()
   const { locale, setLocale, t } = useLocale()
+  const { addToast } = useToast()
   const [view, setView] = useState<View>('home')
   const [usage, setUsage] = useState<any>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -54,6 +56,52 @@ function AppInner() {
   // Load usage on mount and after chat completes
   useEffect(() => { api.usage().then(setUsage).catch(() => {}) }, [])
   useEffect(() => { if (chatComplete) api.usage().then(setUsage).catch(() => {}) }, [chatComplete])
+
+  // Toast: worker report arrived
+  useEffect(() => {
+    if (!taskUpdate) return
+    const name = taskUpdate.name || taskUpdate.worker || 'Worker'
+    const status = taskUpdate.status || 'updated'
+    addToast({
+      type: status === 'failed' ? 'error' : 'info',
+      title: `${name}`,
+      message: `Task ${status}: ${(taskUpdate.description || taskUpdate.result || '').slice(0, 60)}`,
+      action: () => navigateTo('workers'),
+    })
+  }, [taskUpdate])
+
+  // Toast: collector alert (service monitoring)
+  useEffect(() => {
+    if (!collectorAlert) return
+    addToast({
+      type: 'error',
+      title: collectorAlert.title || 'Service Alert',
+      message: collectorAlert.message || collectorAlert.detail || 'A service issue was detected',
+      action: () => navigateTo('home'),
+    })
+  }, [collectorAlert])
+
+  // Toast: research complete
+  useEffect(() => {
+    if (!researchComplete) return
+    addToast({
+      type: 'success',
+      title: 'Research Complete',
+      message: `${researchComplete.topic || researchComplete.query || 'Analysis'} finished`,
+      action: () => navigateTo('research'),
+    })
+  }, [researchComplete])
+
+  // Toast: connection lost/restored
+  const prevConnected = useRef(connected)
+  useEffect(() => {
+    if (prevConnected.current && !connected) {
+      addToast({ type: 'error', title: 'Disconnected', message: 'WebSocket connection lost. Retrying...' })
+    } else if (!prevConnected.current && connected) {
+      addToast({ type: 'success', title: 'Connected', message: 'WebSocket connection restored' })
+    }
+    prevConnected.current = connected
+  }, [connected])
 
   // Tab list for shortcuts (order = Ctrl+1~9 mapping)
   const TABS: View[] = ['home', 'company', 'dashboard', 'chat', 'schedule', 'expense', 'stocks', 'portfolio', 'sectors']
@@ -457,7 +505,9 @@ function App() {
 
   return (
     <LocaleContext.Provider value={ctxValue}>
-      <AppInner />
+      <ToastProvider>
+        <AppInner />
+      </ToastProvider>
     </LocaleContext.Provider>
   )
 }
