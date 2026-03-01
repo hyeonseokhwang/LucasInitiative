@@ -5,6 +5,15 @@
 # Database
 backend/db/*.db
 backend/db/*.db-*
+backend/db/*.db-journal
+backend/db/*.db-wal
+backend/db/*.db-shm
+
+# Runtime state
+runtime-state.json
+sessions.json
+*.pid
+*.log
 
 # Python
 __pycache__/
