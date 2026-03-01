@@ -3,8 +3,11 @@ import {
   createChart, CandlestickSeries, HistogramSeries, LineSeries,
 } from 'lightweight-charts'
 import type { IChartApi, ISeriesApi, CandlestickData, HistogramData, LineData, Time } from 'lightweight-charts'
+import {
+  PieChart, Pie, Cell, Tooltip as ReTooltip, ResponsiveContainer, Legend,
+} from 'recharts'
 import { api, downloadExport } from '../lib/api'
-import { ACCENT, CANDLE, lwcLayout, lwcGrid, lwcScaleBorder } from '../lib/chartTheme'
+import { ACCENT, CANDLE, SERIES_PALETTE, lwcLayout, lwcGrid, lwcScaleBorder } from '../lib/chartTheme'
 import { useLocale } from '../hooks/useLocale'
 import { SignalBadges } from './SignalPanel'
 
@@ -450,6 +453,15 @@ export function StockPanel() {
     return { total: valid.length, gainers: gainers.length, losers: losers.length, unchanged: unchanged.length, topGainers, topLosers, avgChange, sectorMap }
   }, [stocks])
 
+  // Sector pie chart data
+  const sectorPieData = useMemo(() => {
+    return Array.from(portfolioStats.sectorMap.entries())
+      .map(([name, data]) => ({ name, value: data.count, avgChange: data.avgChange }))
+      .sort((a, b) => b.value - a.value)
+  }, [portfolioStats.sectorMap])
+
+  const PIE_COLORS = SERIES_PALETTE
+
   const changeCls = (pct: number) => pct > 0 ? 'text-red-400' : pct < 0 ? 'text-blue-400' : 'text-slate-400'
   const changePrefix = (pct: number) => pct > 0 ? '+' : ''
 
@@ -636,6 +648,46 @@ export function StockPanel() {
               ))}
             </div>
           </div>
+
+          {/* Sector Donut Chart */}
+          {sectorPieData.length > 0 && (
+            <div className="mt-3 bg-slate-900/50 rounded-lg p-3">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-medium">Sector Distribution</div>
+              <div className="flex items-center gap-4">
+                <div className="w-[180px] h-[160px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={sectorPieData}
+                        cx="50%" cy="50%"
+                        innerRadius={40} outerRadius={65}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {sectorPieData.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <ReTooltip
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+                        itemStyle={{ color: '#e2e8f0' }}
+                        formatter={(value: number, name: string) => [`${value} stocks`, name]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1">
+                  {sectorPieData.map((sec, i) => (
+                    <div key={sec.name} className="flex items-center gap-1.5 text-xs">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-slate-300 truncate">{sec.name}</span>
+                      <span className="text-slate-500 ml-auto">{sec.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
