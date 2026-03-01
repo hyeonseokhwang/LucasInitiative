@@ -283,11 +283,41 @@ function ReportItem({ report, isExpanded, onToggle }: {
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-300 break-words">{ev.claim}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] text-slate-500">{ev.source_type}</span>
-                                {ev.verified && <span className="text-[10px] text-emerald-400">Verified</span>}
-                                {hasConflict && <span className="text-[10px] text-red-400">Contradicted</span>}
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className={`px-1.5 py-0.5 text-[10px] rounded border ${
+                                  ev.source_type === 'academic' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                  ev.source_type === 'news' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                  ev.source_type === 'official' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                  ev.source_type === 'internal' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' :
+                                  'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                }`}>{ev.source_type}</span>
+                                {ev.verified && (
+                                  <span className="px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-0.5">
+                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                    Verified
+                                  </span>
+                                )}
+                                {hasConflict && (
+                                  <span className="px-1.5 py-0.5 text-[10px] rounded bg-red-500/10 text-red-400 border border-red-500/20">Contradicted</span>
+                                )}
                               </div>
+                              {hasConflict && (() => {
+                                try {
+                                  const conflicts = JSON.parse(ev.contradicts || '[]')
+                                  if (conflicts.length > 0) {
+                                    return (
+                                      <div className="mt-1.5 pl-2 border-l-2 border-red-500/30">
+                                        {conflicts.map((c: any, ci: number) => (
+                                          <p key={ci} className="text-[10px] text-red-300/70 leading-relaxed">
+                                            {typeof c === 'string' ? c : c.claim || c.reason || JSON.stringify(c)}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    )
+                                  }
+                                } catch { /* ignore parse error */ }
+                                return null
+                              })()}
                             </div>
                           </div>
                         </div>
