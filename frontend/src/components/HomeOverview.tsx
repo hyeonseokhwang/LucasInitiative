@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../lib/api'
 import { CHART_COLORS } from '../lib/chartTheme'
 import { useLocale } from '../hooks/useLocale'
@@ -93,6 +93,9 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
   const [signalCount, setSignalCount] = useState(0)
   const [activeWorkers, setActiveWorkers] = useState(0)
   const [recentReports, setRecentReports] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [notiOpen, setNotiOpen] = useState(false)
+  const notiRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     Promise.allSettled([
@@ -139,11 +142,149 @@ export function HomeOverview({ metrics, onNavigate }: Props) {
       .catch(() => {})
   }, [])
 
+  // Build notifications from collected data
+  useEffect(() => {
+    const items: any[] = []
+
+    // 1. Worker reports needing user decision
+    fetch('http://localhost:9000/api/reports', { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(data => {
+        const reports = Array.isArray(data) ? data : (data.reports || [])
+        reports.forEach((rpt: any) => {
+          if (rpt.needsUserDecision) {
+            items.push({
+              type: 'decision',
+              title: locale === 'ko' ? '유저 판단 필요' : 'Decision Required',
+              message: `[${rpt.worker}] ${(rpt.report || rpt.message || '').slice(0, 60)}`,
+              time: rpt.timestamp || rpt.created_at,
+            })
+          }
+        })
+
+        // 2. Service down alerts (from already-fetched serviceStatus)
+        SERVICES.forEach(svc => {
+          if (serviceStatus[svc.key] === false) {
+            items.push({
+              type: 'down',
+              title: locale === 'ko' ? '서비스 다운' : 'Service Down',
+              message: `${svc.name} (:${svc.port})`,
+              time: new Date().toISOString(),
+            })
+          }
+        })
+
+        // 3. Challenge milestone deadline alerts (within 7 days)
+        challenges.forEach((ch: any) => {
+          const dDay = ch.progress?.d_day ?? null
+          if (typeof dDay === 'number' && dDay <= 7 && dDay >= 0 && ch.status !== 'completed') {
+            items.push({
+              type: 'deadline',
+              title: locale === 'ko' ? '마감 임박' : 'Deadline Soon',
+              message: `${ch.title} — D-${dDay}`,
+              time: ch.deadline || ch.end_date,
+            })
+          }
+        })
+
+        setNotifications(items)
+      })
+      .catch(() => {
+        // Still add service down + deadline alerts even if reports fetch fails
+        const fallback: any[] = []
+        SERVICES.forEach(svc => {
+          if (serviceStatus[svc.key] === false) {
+            fallback.push({ type: 'down', title: locale === 'ko' ? '서비스 다운' : 'Service Down', message: `${svc.name} (:${svc.port})`, time: new Date().toISOString() })
+          }
+        })
+        challenges.forEach((ch: any) => {
+          const dDay = ch.progress?.d_day ?? null
+          if (typeof dDay === 'number' && dDay <= 7 && dDay >= 0 && ch.status !== 'completed') {
+            fallback.push({ type: 'deadline', title: locale === 'ko' ? '마감 임박' : 'Deadline Soon', message: `${ch.title} — D-${dDay}`, time: ch.deadline || ch.end_date })
+          }
+        })
+        setNotifications(fallback)
+      })
+  }, [serviceStatus, challenges, locale])
+
+  // Close notification dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notiRef.current && !notiRef.current.contains(e.target as Node)) setNotiOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
   const vramPercent = metrics && metrics.gpu.mem_total_mb > 0
     ? (metrics.gpu.mem_used_mb / metrics.gpu.mem_total_mb) * 100 : 0
 
+  const notiLabel = locale === 'ko' ? '알림' : 'Notifications'
+  const notiEmpty = locale === 'ko' ? '새 알림이 없습니다' : 'No new notifications'
+  const notiTypeIcon: Record<string, string> = { decision: '!', down: 'x', deadline: 'D' }
+  const notiTypeColor: Record<string, string> = {
+    decision: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    down: 'bg-red-500/20 text-red-400 border-red-500/30',
+    deadline: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  }
+
   return (
     <div className="space-y-6">
+      {/* Notification Bell */}
+      <div className="flex items-center justify-end" ref={notiRef}>
+        <div className="relative">
+          <button
+            onClick={() => setNotiOpen(prev => !prev)}
+            className="relative p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 transition-colors"
+            aria-label={notiLabel}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+                {notifications.length}
+              </span>
+            )}
+          </button>
+
+          {/* Dropdown */}
+          {notiOpen && (
+            <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl bg-slate-800 border border-slate-700 shadow-xl z-50">
+              <div className="px-4 py-3 border-b border-slate-700/50">
+                <span className="text-sm font-semibold text-white">{notiLabel}</span>
+                <span className="ml-2 text-xs text-slate-500">({notifications.length})</span>
+              </div>
+              {notifications.length === 0 ? (
+                <div className="px-4 py-8 text-center text-xs text-slate-500">{notiEmpty}</div>
+              ) : (
+                <div className="divide-y divide-slate-700/30">
+                  {notifications.map((n, i) => (
+                    <div key={i} className="px-4 py-3 hover:bg-slate-700/20 transition-colors">
+                      <div className="flex items-start gap-2.5">
+                        <span className={`shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold border ${notiTypeColor[n.type] || notiTypeColor.decision}`}>
+                          {notiTypeIcon[n.type] || '?'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{n.title}</div>
+                          <div className="text-xs text-slate-200 leading-relaxed">{n.message}</div>
+                          {n.time && (
+                            <div className="text-[10px] text-slate-600 mt-1">
+                              {new Date(n.time).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* System Status */}
       <div
         onClick={() => onNavigate('dashboard')}

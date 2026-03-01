@@ -12,6 +12,7 @@ interface Props {
   open: boolean
   onClose: () => void
   commands: PaletteCommand[]
+  searchProvider?: (query: string) => Promise<PaletteCommand[]>
 }
 
 function fuzzyMatch(query: string, text: string): { match: boolean; score: number } {
@@ -39,32 +40,57 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Navigate': 'text-blue-400',
   'Action': 'text-emerald-400',
   'Search': 'text-amber-400',
+  'Report': 'text-cyan-400',
+  'Research': 'text-purple-400',
+  'Daily': 'text-orange-400',
+  'Stock': 'text-red-400',
 }
 
-export function CommandPalette({ open, onClose, commands }: Props) {
+export function CommandPalette({ open, onClose, commands, searchProvider }: Props) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [searchResults, setSearchResults] = useState<PaletteCommand[]>([])
+  const [searching, setSearching] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
   // Reset on open
   useEffect(() => {
     if (open) {
       setQuery('')
       setSelectedIndex(0)
+      setSearchResults([])
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
 
-  // Filter and sort commands
+  // Debounced search provider call (300ms)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!query.trim() || !searchProvider) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+    setSearching(true)
+    debounceRef.current = setTimeout(() => {
+      searchProvider(query)
+        .then(results => { setSearchResults(results); setSearching(false) })
+        .catch(() => { setSearchResults([]); setSearching(false) })
+    }, 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [query, searchProvider])
+
+  // Filter and sort commands + merge search results
   const filtered = useMemo(() => {
-    if (!query.trim()) return commands
-    return commands
+    const cmdResults = !query.trim() ? commands : commands
       .map(cmd => ({ cmd, ...fuzzyMatch(query, `${cmd.label} ${cmd.category}`) }))
       .filter(r => r.match)
       .sort((a, b) => b.score - a.score)
       .map(r => r.cmd)
-  }, [query, commands])
+    return [...cmdResults, ...searchResults]
+  }, [query, commands, searchResults])
 
   // Clamp selected index
   useEffect(() => {
@@ -139,7 +165,12 @@ export function CommandPalette({ open, onClose, commands }: Props) {
         <div ref={listRef} className="max-h-[300px] overflow-y-auto py-1">
           {filtered.length === 0 ? (
             <div className="px-4 py-6 text-center text-sm text-slate-500">
-              No matching commands
+              {searching ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                  Searching...
+                </span>
+              ) : 'No matching commands or results'}
             </div>
           ) : (
             filtered.map((cmd, i) => (
@@ -172,6 +203,12 @@ export function CommandPalette({ open, onClose, commands }: Props) {
           <span><kbd className="bg-slate-700 px-1 py-0.5 rounded mr-1">&uarr;&darr;</kbd> Navigate</span>
           <span><kbd className="bg-slate-700 px-1 py-0.5 rounded mr-1">Enter</kbd> Select</span>
           <span><kbd className="bg-slate-700 px-1 py-0.5 rounded mr-1">Esc</kbd> Close</span>
+          {searching && (
+            <span className="ml-auto flex items-center gap-1">
+              <span className="w-2 h-2 border border-slate-500 border-t-transparent rounded-full animate-spin" />
+              Searching...
+            </span>
+          )}
         </div>
       </div>
     </div>

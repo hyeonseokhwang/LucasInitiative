@@ -98,6 +98,79 @@ function AppInner() {
     { id: 'search-reports', label: 'Browse Reports', category: 'Search', action: () => { navigateTo('reports') } },
   ], [navigateTo])
 
+  // Global search provider — searches worker reports, research, daily reports, stocks
+  const globalSearchProvider = useCallback(async (query: string): Promise<PaletteCommand[]> => {
+    const q = query.toLowerCase()
+    const results: PaletteCommand[] = []
+
+    const fetches = await Promise.allSettled([
+      // Worker reports from CC
+      fetch('http://localhost:9000/api/reports', { signal: AbortSignal.timeout(3000) })
+        .then(r => r.json())
+        .then(data => {
+          const reports = Array.isArray(data) ? data : (data.reports || [])
+          reports.forEach((rpt: any) => {
+            const text = `${rpt.worker || ''} ${rpt.report || rpt.message || ''}`
+            if (text.toLowerCase().includes(q)) {
+              results.push({
+                id: `rpt-${rpt.timestamp || Math.random()}`,
+                label: `[${rpt.worker}] ${(rpt.report || rpt.message || '').slice(0, 60)}`,
+                category: 'Report',
+                action: () => navigateTo('workers'),
+              })
+            }
+          })
+        }),
+      // Research reports
+      api.researchReports(20)
+        .then(data => {
+          (data.reports || []).forEach((r: any) => {
+            const text = `${r.title || ''} ${r.summary || ''}`
+            if (text.toLowerCase().includes(q)) {
+              results.push({
+                id: `res-${r.id}`,
+                label: r.title || 'Research',
+                category: 'Research',
+                action: () => navigateTo('research'),
+              })
+            }
+          })
+        }),
+      // Daily reports
+      api.dailyReports(30)
+        .then(data => {
+          (data.reports || []).forEach((r: any) => {
+            const text = `${r.title || ''} ${r.date || ''} ${r.summary || ''}`
+            if (text.toLowerCase().includes(q)) {
+              results.push({
+                id: `daily-${r.id || r.date}`,
+                label: `${r.date || ''} ${(r.title || r.summary || '').slice(0, 50)}`,
+                category: 'Daily',
+                action: () => navigateTo('dailyreport'),
+              })
+            }
+          })
+        }),
+      // Stocks
+      api.stockList()
+        .then(data => {
+          (data.stocks || []).forEach((s: any) => {
+            const text = `${s.name || ''} ${s.symbol || ''} ${s.sector || ''}`
+            if (text.toLowerCase().includes(q)) {
+              results.push({
+                id: `stock-${s.symbol}`,
+                label: `${s.symbol} — ${s.name}`,
+                category: 'Stock',
+                action: () => navigateTo('stocks'),
+              })
+            }
+          })
+        }),
+    ])
+
+    return results.slice(0, 15) // Cap at 15 results
+  }, [navigateTo])
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200">
       {/* Header */}
@@ -363,7 +436,7 @@ function AppInner() {
       </main>
 
       {/* Command Palette */}
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={paletteCommands} />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={paletteCommands} searchProvider={globalSearchProvider} />
     </div>
   )
 }
