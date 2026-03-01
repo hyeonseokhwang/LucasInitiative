@@ -387,6 +387,8 @@ export function StockPanel() {
   const [stocks, setStocks] = useState<StockItem[]>([])
   const [indices, setIndices] = useState<IndexItem[]>([])
   const [selected, setSelected] = useState<StockItem | null>(null)
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareTargets, setCompareTargets] = useState<[StockItem | null, StockItem | null]>([null, null])
   const [filter, setFilter] = useState<'all' | 'kr' | 'us'>('all')
   const [search, setSearch] = useState('')
   const [sectorFilter, setSectorFilter] = useState('')
@@ -535,6 +537,115 @@ export function StockPanel() {
     )
   }
 
+  // Compare view: two stocks side by side
+  if (compareMode && compareTargets[0] && compareTargets[1]) {
+    const [a, b] = compareTargets as [StockItem, StockItem]
+    const metrics = [
+      { label: s.price, a: formatPrice(a.price, a.market), b: formatPrice(b.price, b.market) },
+      { label: s.change, a: `${changePrefix(a.change_pct)}${a.change_pct}%`, b: `${changePrefix(b.change_pct)}${b.change_pct}%`, aCls: changeCls(a.change_pct), bCls: changeCls(b.change_pct) },
+      { label: s.volume, a: a.volume.toLocaleString(), b: b.volume.toLocaleString() },
+      { label: s.marketCap, a: formatCap(a.market_cap), b: formatCap(b.market_cap) },
+      { label: s.open, a: a.open_price.toLocaleString(), b: b.open_price.toLocaleString() },
+      { label: s.high, a: a.high.toLocaleString(), b: b.high.toLocaleString() },
+      { label: s.low, a: a.low.toLocaleString(), b: b.low.toLocaleString() },
+    ]
+    return (
+      <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-700/50">
+          <button onClick={() => { setCompareMode(false); setCompareTargets([null, null]) }}
+            className="text-xs text-slate-400 hover:text-white mb-2 flex items-center gap-1">&lt; Back to list</button>
+          <h2 className="text-white font-medium">Compare: {a.name} vs {b.name}</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Metrics comparison */}
+          <div className="bg-slate-900/50 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="px-4 py-2 text-left text-slate-500 text-xs">Metric</th>
+                  <th className="px-4 py-2 text-right text-blue-400 text-xs">{a.name}</th>
+                  <th className="px-4 py-2 text-right text-purple-400 text-xs">{b.name}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metrics.map(m => (
+                  <tr key={m.label} className="border-b border-slate-700/30">
+                    <td className="px-4 py-2 text-slate-400 text-xs">{m.label}</td>
+                    <td className={`px-4 py-2 text-right text-xs font-medium ${m.aCls || 'text-white'}`}>{m.a}</td>
+                    <td className={`px-4 py-2 text-right text-xs font-medium ${m.bCls || 'text-white'}`}>{m.b}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Side by side charts */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-blue-400 font-medium mb-2">{a.name} ({a.symbol})</div>
+              <StockChart symbol={a.symbol} />
+            </div>
+            <div>
+              <div className="text-xs text-purple-400 font-medium mb-2">{b.name} ({b.symbol})</div>
+              <StockChart symbol={b.symbol} />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Compare mode: selecting stocks
+  if (compareMode) {
+    const slot = compareTargets[0] ? 1 : 0
+    return (
+      <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-700/50">
+          <button onClick={() => { setCompareMode(false); setCompareTargets([null, null]) }}
+            className="text-xs text-slate-400 hover:text-white mb-2 flex items-center gap-1">&lt; Cancel</button>
+          <h2 className="text-white font-medium">Select stocks to compare</h2>
+          <div className="flex items-center gap-3 mt-2 text-xs">
+            <span className={`px-2 py-1 rounded ${compareTargets[0] ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400 animate-pulse'}`}>
+              {compareTargets[0] ? compareTargets[0].name : 'Select 1st stock...'}
+            </span>
+            <span className="text-slate-600">vs</span>
+            <span className={`px-2 py-1 rounded ${compareTargets[1] ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-700 text-slate-400'}`}>
+              {compareTargets[1] ? compareTargets[1].name : 'Select 2nd stock...'}
+            </span>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-slate-500 border-b border-slate-700/30 sticky top-0 bg-slate-800/90">
+              <tr>
+                <th className="text-left px-4 py-2">{s.name}</th>
+                <th className="text-right px-2 py-2">{s.price}</th>
+                <th className="text-right px-2 py-2">{s.change}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStocks.map(st => (
+                <tr key={st.symbol}
+                  onClick={() => {
+                    const next: [StockItem | null, StockItem | null] = [...compareTargets]
+                    next[slot] = st
+                    setCompareTargets(next)
+                  }}
+                  className="border-b border-slate-700/20 hover:bg-slate-700/30 cursor-pointer transition">
+                  <td className="px-4 py-2.5">
+                    <span className="text-white font-medium">{st.name}</span>
+                    <div className="text-xs text-slate-500">{st.symbol.replace('.KS', '').replace('.KQ', '')}</div>
+                  </td>
+                  <td className="text-right px-2 py-2.5 text-white">{formatPrice(st.price, st.market)}</td>
+                  <td className={`text-right px-2 py-2.5 ${changeCls(st.change_pct)}`}>{changePrefix(st.change_pct)}{st.change_pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-700/50">
@@ -549,6 +660,10 @@ export function StockPanel() {
                 </button>
               ))}
             </div>
+            <button onClick={() => setCompareMode(true)}
+              className="px-2 py-1 text-[10px] rounded bg-slate-700/60 text-slate-400 hover:text-white hover:bg-slate-600 transition" title="Compare 2 stocks">
+              Compare
+            </button>
             <button onClick={() => downloadExport(`/api/export/stocks?format=csv&market=${filter}`, 'stocks.csv')}
               className="px-2 py-1 text-[10px] rounded bg-slate-700/60 text-slate-400 hover:text-white hover:bg-slate-600 transition" title="Export CSV">
               CSV
